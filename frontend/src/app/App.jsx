@@ -12,7 +12,7 @@ import useSystemStore from "../store/systemStore";
 const App = memo(function App() {
   const { activeWindowId, closeWindow, windows, focusWindow } =
     useWindowStore();
-  const { theme } = useSystemStore();
+  const { theme, brightness } = useSystemStore();
 
   useEffect(() => {
     const handleKeyDown = (e) => {
@@ -95,6 +95,12 @@ const App = memo(function App() {
           ))}
         </AnimatePresence>
       </div>
+
+      {/* Brightness Overlay */}
+      <div
+        className="fixed inset-0 z-[99999] pointer-events-none bg-black transition-opacity duration-100"
+        style={{ opacity: (100 - brightness) / 100 }}
+      />
     </div>
   );
 });

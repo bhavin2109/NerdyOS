@@ -12,6 +12,10 @@ const useSystemStore = create(
             notificationsEnabled: true,
             dockMode: 'auto', // 'always', 'auto', 'hidden'
 
+            // System Controls
+            brightness: 100, // 0-100
+            volume: 50, // 0-100
+
             // App Management
             disabledApps: [], // List of app IDs that are disabled
             pinnedApps: ['finder', 'browser', 'settings'], // Default pinned apps
@@ -27,6 +31,8 @@ const useSystemStore = create(
             setTheme: (theme) => set({ theme }),
             setWallpaper: (wallpaper) => set({ wallpaper }),
             setDockMode: (mode) => set({ dockMode: mode }),
+            setBrightness: (val) => set({ brightness: val }),
+            setVolume: (val) => set({ volume: val }),
             toggleNotifications: () => set((state) => ({ notificationsEnabled: !state.notificationsEnabled })),
 
             toggleAppDisabled: (appId) => set((state) => {
@@ -67,7 +73,10 @@ const useSystemStore = create(
                 notificationsEnabled: state.notificationsEnabled,
                 dockMode: state.dockMode,
                 disabledApps: state.disabledApps,
-                pinnedApps: state.pinnedApps
+                disabledApps: state.disabledApps,
+                pinnedApps: state.pinnedApps,
+                brightness: state.brightness,
+                volume: state.volume
             }),
         }
     )

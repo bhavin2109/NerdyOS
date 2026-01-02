@@ -3,13 +3,15 @@ import { motion, AnimatePresence } from "framer-motion";
 import useSystemStore from "../../store/systemStore";
 import useWindowStore from "../../store/windowStore";
 import { getAppById, APP_REGISTRY } from "../appRegistry";
+import ControlPanel from "./ControlPanel";
 
 const MenuBar = () => {
   const [date, setDate] = useState(new Date());
   const [showAppLauncher, setShowAppLauncher] = useState(false);
+  const [showControlPanel, setShowControlPanel] = useState(false);
   const [appContextMenu, setAppContextMenu] = useState(null);
 
-  const { pinnedApps, toggleAppPinned } = useSystemStore();
+  const { pinnedApps, toggleAppPinned, disabledApps } = useSystemStore();
   const { activeWindowId, openWindow, windows, toggleMinimize, focusWindow } =
     useWindowStore();
 
@@ -31,13 +33,14 @@ const MenuBar = () => {
   useEffect(() => {
     const handleClick = () => {
       setShowAppLauncher(false);
+      setShowControlPanel(false);
       setAppContextMenu(null);
     };
-    if (showAppLauncher || appContextMenu) {
+    if (showAppLauncher || appContextMenu || showControlPanel) {
       window.addEventListener("click", handleClick);
       return () => window.removeEventListener("click", handleClick);
     }
-  }, [showAppLauncher, appContextMenu]);
+  }, [showAppLauncher, appContextMenu, showControlPanel]);
 
   // Format: "Mon 2 Jan 3:20 PM"
   const formattedDate =
@@ -60,6 +63,7 @@ const MenuBar = () => {
       : null;
     openWindow(appId, safeRect);
     setShowAppLauncher(false);
+    setShowControlPanel(false);
     setAppContextMenu(null);
   };
 
@@ -81,28 +85,21 @@ const MenuBar = () => {
   // Get all apps from registry
   const allApps = Object.values(APP_REGISTRY);
 
-  const handlePinnedIconClick = (appId) => {
-    const isRunning = windows.some((w) => w.id === appId);
-    if (isRunning) {
-      const window = windows.find((w) => w.id === appId);
-      if (activeWindowId === appId) {
-        toggleMinimize(appId);
-      } else {
-        if (window.isMinimized) {
-          toggleMinimize(appId);
-        } else {
-          focusWindow(appId);
-        }
-      }
-    } else {
-      openWindow(appId);
-    }
-  };
+  // Helper to check if app is disabled
+  const isAppDisabled = (id) => disabledApps.includes(id);
+
+  // Compute displayed apps for Taskbar: Pinned + Running
+  const runningAppIds = windows.map((w) => w.id);
+  const validPinnedApps = pinnedApps.filter((id) => !isAppDisabled(id));
+  const runningUnpinnedApps = runningAppIds.filter(
+    (id) => !pinnedApps.includes(id) && !isAppDisabled(id)
+  );
+  const taskbarAppIds = [...validPinnedApps, ...runningUnpinnedApps];
 
   return (
-    <div className="fixed top-0 w-full h-8 bg-slate-900/10 backdrop-blur-md flex items-center justify-between text-cyan-50 text-sm select-none z-50 shadow-[0_4px_30px_rgba(0,0,0,0.1)] border-b border-white/5">
-      {/* Left Side: App Launcher Icon + Active App Name */}
-      <div className="flex items-center gap-3 pl-2">
+    <div className="fixed top-0 w-full h-10 bg-slate-900/80 backdrop-blur-md flex items-center justify-between text-cyan-50 text-sm select-none z-50 shadow-md border-b border-white/5 px-2">
+      {/* Left Side: App Launcher */}
+      <div className="flex items-center gap-3">
         {/* App Launcher Icon */}
         <div
           className="relative hover:bg-white/10 p-1.5 rounded cursor-pointer transition-all"
@@ -144,6 +141,7 @@ const MenuBar = () => {
                         whileTap={{ scale: 0.95 }}
                         className="flex flex-col items-center gap-1 p-2 rounded-xl hover:bg-white/10 cursor-pointer transition-colors relative group"
                         onClick={() => handleAppLaunch(app.id)}
+                        onContextMenu={(e) => handleAppContextMenu(e, app.id)}
                       >
                         {/* App Icon */}
                         <div
@@ -154,30 +152,36 @@ const MenuBar = () => {
 
                           {/* Icon Content */}
                           <span className="relative z-10 drop-shadow-md text-2xl">
-                            {app.icon === "folder" && "📂"}
-                            {app.icon === "bag" && "🛍️"}
-                            {app.icon === "globe" && "🌐"}
-                            {app.icon === "message" && "💬"}
-                            {app.icon === "mail" && "✉️"}
-                            {app.icon === "map" && "🗺️"}
-                            {app.icon === "photo" && "🖼️"}
-                            {app.icon === "calendar" && "📅"}
-                            {app.icon === "note" && "📝"}
-                            {app.icon === "settings" && "⚙️"}
-                            {app.icon === "sparkles" && "✨"}
-                            {[
-                              "folder",
-                              "bag",
-                              "globe",
-                              "message",
-                              "mail",
-                              "map",
-                              "photo",
-                              "calendar",
-                              "note",
-                              "settings",
-                              "sparkles",
-                            ].includes(app.icon) || app.name[0]}
+                            {app.icon && app.icon.length < 3 ? (
+                              app.icon
+                            ) : (
+                              <>
+                                {app.icon === "folder" && "📂"}
+                                {app.icon === "bag" && "🛍️"}
+                                {app.icon === "globe" && "🌐"}
+                                {app.icon === "message" && "💬"}
+                                {app.icon === "mail" && "✉️"}
+                                {app.icon === "map" && "🗺️"}
+                                {app.icon === "photo" && "🖼️"}
+                                {app.icon === "calendar" && "📅"}
+                                {app.icon === "note" && "📝"}
+                                {app.icon === "settings" && "⚙️"}
+                                {app.icon === "sparkles" && "✨"}
+                                {![
+                                  "folder",
+                                  "bag",
+                                  "globe",
+                                  "message",
+                                  "mail",
+                                  "map",
+                                  "photo",
+                                  "calendar",
+                                  "note",
+                                  "settings",
+                                  "sparkles",
+                                ].includes(app.icon) && app.name[0]}
+                              </>
+                            )}
                           </span>
                         </div>
 
@@ -197,10 +201,169 @@ const MenuBar = () => {
               </motion.div>
             )}
           </AnimatePresence>
-        </div>
 
-        {/* Active App Icon */}
-        {activeApp && (
+          {/* App Launcher Context Menu */}
+          {appContextMenu && (
+            <div
+              className="fixed bg-slate-900/95 backdrop-blur-xl border border-cyan-400/30 shadow-2xl rounded-xl py-1 w-40 text-sm text-cyan-50 z-[150]"
+              style={{ top: appContextMenu.y, left: appContextMenu.x }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div
+                className="px-4 py-2 hover:bg-white/10 cursor-pointer flex items-center gap-2"
+                onClick={() => handleTogglePin(appContextMenu.appId)}
+              >
+                {pinnedApps.includes(appContextMenu.appId) ? (
+                  <>
+                    <svg
+                      className="w-4 h-4 text-cyan-400"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                      />
+                    </svg>
+                    <span>Unpin</span>
+                  </>
+                ) : (
+                  <>
+                    <svg
+                      className="w-4 h-4 text-cyan-400"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"
+                      />
+                    </svg>
+                    <span>Pin to Top Bar</span>
+                  </>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Center: Top Bar Taskbar */}
+      <div className="absolute left-1/2 transform -translate-x-1/2 flex items-center gap-2">
+        {taskbarAppIds.map((appId) => {
+          const registryItem = APP_REGISTRY[appId];
+          if (!registryItem) return null;
+
+          const app = {
+            ...registryItem,
+            color: registryItem.color || "bg-gray-500",
+          };
+          const isOpen = windows.some((w) => w.id === appId);
+          const isActive = activeWindowId === appId;
+
+          return (
+            <div
+              key={appId}
+              className={`relative flex flex-col items-center group cursor-pointer p-1 rounded-lg transition-all ${
+                isActive ? "bg-white/10" : "hover:bg-white/5"
+              }`}
+              onClick={() => {
+                if (isOpen) {
+                  if (
+                    isActive &&
+                    !windows.find((w) => w.id === appId)?.isMinimized
+                  ) {
+                    toggleMinimize(appId);
+                  } else {
+                    openWindow(appId); // Brings to front if already open
+                  }
+                } else {
+                  openWindow(appId);
+                }
+              }}
+              onContextMenu={(e) => handleAppContextMenu(e, appId)}
+            >
+              <div
+                className={`w-8 h-8 rounded-lg ${app.color} flex items-center justify-center text-white text-sm shadow-md overflow-hidden relative`}
+              >
+                <div className="absolute inset-0 bg-gradient-to-br from-white/30 to-transparent pointer-events-none" />
+                <span className="relative z-10">
+                  {app.icon && app.icon.length < 3 ? (
+                    app.icon
+                  ) : (
+                    <>
+                      {app.icon === "folder" && "📂"}
+                      {app.icon === "settings" && "⚙️"}
+                      {app.icon === "globe" && "🌐"}
+                      {app.icon === "message" && "💬"}
+                      {!["folder", "settings", "globe", "message"].includes(
+                        app.icon
+                      ) && app.name[0]}
+                    </>
+                  )}
+                </span>
+              </div>
+
+              {/* Active/Open Dot Indicator */}
+              {isOpen && (
+                <div
+                  className={`absolute -bottom-1 w-1 h-1 rounded-full ${
+                    isActive ? "bg-cyan-400" : "bg-white/50"
+                  }`}
+                />
+              )}
+            </div>
+          );
+        })}
+      </div>
+      {/* Active App Icon */}
+      {activeApp && (
+        <div className="flex items-center gap-1 group">
+          {/* Pin Toggle Button */}
+          <div
+            className={`p-1 rounded hover:bg-white/10 cursor-pointer transition-colors ${
+              pinnedApps.includes(activeApp.id)
+                ? "text-cyan-400"
+                : "text-slate-500 hover:text-cyan-200"
+            }`}
+            title={
+              pinnedApps.includes(activeApp.id)
+                ? "Unpin from Dock"
+                : "Pin to Dock"
+            }
+            onClick={() => toggleAppPinned(activeApp.id)}
+          >
+            {pinnedApps.includes(activeApp.id) ? (
+              <svg
+                className="w-3.5 h-3.5"
+                fill="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path d="M16 12V4H8v8l-2 2v2h12v-2l-2-2zm-5-6h2v6h-2V6zm1 16c1.1 0 2-.9 2-2H10c0 1.1.9 2 2 2z" />
+              </svg>
+            ) : (
+              <svg
+                className="w-3.5 h-3.5"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"
+                />
+              </svg>
+            )}
+          </div>
+
           <div
             className="flex items-center gap-2 px-1 py-1 rounded hover:bg-white/10 transition-colors cursor-pointer group"
             onClick={() => toggleMinimize(activeApp.id)}
@@ -299,8 +462,8 @@ const MenuBar = () => {
               </div>
             </div>
           </div>
-        )}
-      </div>
+        </div> // Close wrapping div
+      )}
 
       {/* Right Side: Time, WiFi, Control Center, Battery, Notifications */}
       <div className="flex items-center gap-2 pr-2">
@@ -327,7 +490,16 @@ const MenuBar = () => {
         </div>
 
         {/* Control Center Toggle */}
-        <div className="hover:bg-white/10 p-1.5 rounded cursor-default">
+        <div
+          className={`hover:bg-white/10 p-1.5 rounded cursor-pointer transition-colors ${
+            showControlPanel ? "bg-white/10" : ""
+          } relative`}
+          onClick={(e) => {
+            e.stopPropagation();
+            setShowControlPanel(!showControlPanel);
+            setShowAppLauncher(false);
+          }}
+        >
           <svg
             className="w-4 h-4"
             fill="none"
@@ -341,6 +513,9 @@ const MenuBar = () => {
               d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"
             />
           </svg>
+          <AnimatePresence>
+            {showControlPanel && <ControlPanel />}
+          </AnimatePresence>
         </div>
 
         {/* Battery Icon */}
