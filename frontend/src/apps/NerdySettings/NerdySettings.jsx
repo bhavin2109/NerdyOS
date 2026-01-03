@@ -1,604 +1,355 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import clsx from "clsx";
-import AppTemplate from "../AppTemplate";
 import useSystemStore from "../../store/systemStore";
-import { APP_REGISTRY } from "../../os/appRegistry";
-import { getFiles } from "../../services/indexedDb";
 
-// --- Constants ---
-const CATEGORIES = [
-  { id: "appearance", icon: "🎨", label: "Appearance" },
-  { id: "dock", icon: "⚓", label: "Dock" },
-  { id: "wallpaper", icon: "🖼️", label: "Wallpaper" },
-  { id: "connectivity", icon: "wifi", label: "Connectivity" },
-  { id: "storage", icon: "💾", label: "Storage" },
-  { id: "apps", icon: "grid", label: "Installed Apps" },
-  { id: "notifications", icon: "bell", label: "Notifications" },
-  { id: "profile", icon: "user", label: "Profile" },
-  { id: "about", icon: "info", label: "About" },
-];
+// --- Icons (Using SVG for cleaner look) ---
+const Icons = {
+  Home: () => (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+      <path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z" />
+    </svg>
+  ),
+  System: () => (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+      <path d="M20 3H4c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h6v2H8v2h8v-2h-2v-2h6c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 12H4V5h16v10z" />
+    </svg>
+  ),
+  Bluetooth: () => (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+      <path d="M17.71 7.71L12 2h-1v7.59L6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 11 14.41V22h1l5.71-5.71-4.3-4.29 4.3-4.29zM13 5.83l1.88 1.88L13 9.59V5.83zm1.88 10.46L13 18.17v-3.76l1.88 1.88z" />
+    </svg>
+  ),
+  Network: () => (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+      <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z" />
+    </svg>
+  ),
+  Personalization: () => (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+      <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z" />
+    </svg>
+  ),
+  Apps: () => (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+      <path d="M4 8h4V4H4v4zm6 12h4v-4h-4v4zm-6 0h4v-4H4v4zm0-6h4v-4H4v4zm6 0h4v-4h-4v4zm6-10v4h4V4h-4zm-6 4h4V4h-4zm6 6h4v-4h-4v4zm0 6h4v-4h-4v4z" />
+    </svg>
+  ),
+  Accounts: () => (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+      <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z" />
+    </svg>
+  ),
+  Time: () => (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+      <path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8z" />
+      <path d="M12.5 7H11v6l5.25 3.15.75-1.23-4.5-2.67z" />
+    </svg>
+  ),
+  Gaming: () => (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+      <path d="M21 6H3c-1.1 0-2 .9-2 2v8c0 1.1.9 2 2 2h18c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zm-10 7H8v3H6v-3H3v-2h3V8h2v3h3v2zm4.5 2c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zm4-3c-.83 0-1.5-.67-1.5-1.5S18.67 9 19.5 9s1.5.67 1.5 1.5-.67 1.5-1.5 1.5z" />
+    </svg>
+  ),
+  Accessibility: () => (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+      <path d="M12 2c1.1 0 2 .9 2 2s-.9 2-2 2-2-.9-2-2 .9-2 2-2zm9 7h-6v13h-2v-6h-2v6H9V9H3V7h18v2z" />
+    </svg>
+  ),
+  Privacy: () => (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+      <path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm0 10.99h7c-.53 4.12-3.28 7.79-7 8.94V12H5V6.3l7-3.11v8.8z" />
+    </svg>
+  ),
+  Update: () => (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+      <path d="M21 10.12h-6.78l2.74-2.82c-2.73-2.7-7.15-2.8-9.88-.1-2.73 2.71-2.73 7.08 0 9.79s7.15 2.71 9.88 0C18.32 15.65 19 14.08 19 12.1h2c0 1.98-.88 4.55-2.64 6.29-3.51 3.48-9.21 3.48-12.72 0-3.51-3.47-3.51-9.11 0-12.58 3.51-3.47 9.14-3.47 12.65 0l3.65-3.69H7.06v-3L21 10.12z" />
+    </svg>
+  ),
+  ArrowRight: () => (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+      <path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z" />
+    </svg>
+  ),
+  Search: () => (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+      <path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z" />
+    </svg>
+  ),
+};
 
-const WALLPAPERS = [
-  {
-    id: "sierra",
-    name: "Sierra",
-    url: "https://images.unsplash.com/photo-1477346611705-65d1883cee1e?q=80&w=2070&auto=format&fit=crop",
-  },
-  {
-    id: "ventura",
-    name: "Ventura",
-    url: "https://images.unsplash.com/photo-1621360841013-c768371e93cf?q=80&w=2070&auto=format&fit=crop",
-  },
-  {
-    id: "sonoma",
-    name: "Sonoma",
-    url: "https://images.unsplash.com/photo-1506744038136-46273834b3fb?q=80&w=2070&auto=format&fit=crop",
-  },
-  {
-    id: "midnight",
-    name: "Midnight",
-    url: "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=1964&auto=format&fit=crop",
-  },
-];
+const SidebarItem = ({ icon: Icon, label, isActive, onClick }) => (
+  <button
+    onClick={onClick}
+    className={clsx(
+      "w-full flex items-center gap-4 px-3 py-2 rounded-[4px] text-sm text-left transition-colors relative mb-0.5",
+      isActive
+        ? "bg-[#3C3C3C] text-white before:absolute before:left-0 before:top-1/2 before:-translate-y-1/2 before:w-[3px] before:h-4 before:bg-[#76B9ED] before:rounded-full ml-1"
+        : "text-[#E6E6E6] hover:bg-[#323232] hover:ml-1 ml-1"
+    )}
+  >
+    <div className={clsx(isActive ? "text-[#76B9ED]" : "text-[#989898]")}>
+      <Icon />
+    </div>
+    <span className="font-normal tracking-wide">{label}</span>
+  </button>
+);
 
-// --- Sub-components ---
+const SettingsCard = ({
+  icon,
+  title,
+  subtitle,
+  action,
+  showArrow = true,
+  image,
+  large = false,
+}) => (
+  <div
+    className={clsx(
+      "bg-[#2B2B2B] hover:bg-[#323232] border border-[#353535] rounded-lg p-4 cursor-pointer transition-colors flex items-center gap-4 group h-full",
+      large ? "items-start" : "items-center"
+    )}
+  >
+    {image && (
+      <div className="w-16 h-16 rounded-md overflow-hidden bg-black shrink-0 border border-white/5">
+        <img src={image} alt="" className="w-full h-full object-cover" />
+      </div>
+    )}
+    {!image && icon && (
+      <div className="w-10 h-10 rounded-full bg-transparent flex items-center justify-center text-2xl shrink-0">
+        {icon}
+      </div>
+    )}
 
-const DockSettings = () => {
-  const { dockMode, setDockMode } = useSystemStore();
+    <div className="flex-1 min-w-0">
+      <div className="text-[15px] font-semibold text-white truncate">
+        {title}
+      </div>
+      {subtitle && (
+        <div className="text-[13px] text-[#A0A0A0] leading-tight mt-0.5">
+          {subtitle}
+        </div>
+      )}
+    </div>
 
-  const options = [
+    {action && <div className="shrink-0">{action}</div>}
+
+    {showArrow && (
+      <div className="text-[#808080] group-hover:text-white transition-colors">
+        <Icons.ArrowRight />
+      </div>
+    )}
+  </div>
+);
+
+const HeroCard = ({ profile }) => (
+  <div className="bg-[#2B2B2B] border border-[#353535] rounded-lg p-0 overflow-hidden mb-6 flex relative group">
+    {/* Device Image / Artwork */}
+    <div className="w-24 bg-black relative shrink-0">
+      <img
+        src={profile.avatar}
+        className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity"
+        alt="Profile"
+      />
+    </div>
+
+    {/* Info */}
+    <div className="flex-1 p-5 flex flex-col justify-center">
+      <h2 className="text-xl font-semibold text-white mb-0.5">
+        {profile.name}
+      </h2>
+      <div className="text-sm text-[#A0A0A0] uppercase tracking-wider font-semibold">
+        NerdyOS Pro
+      </div>
+      <div className="text-xs text-[#808080] mt-1 hover:text-[#76B9ED] cursor-pointer">
+        Rename
+      </div>
+    </div>
+
+    {/* Statuses */}
+    <div className="flex flex-col justify-center pr-8 gap-3 border-l border-[#353535] pl-6 my-4">
+      <div className="flex items-center gap-3">
+        <div className="text-[#76B9ED]">
+          <Icons.Network />
+        </div>
+        <div>
+          <div className="text-sm font-medium text-white">NerdyNet_5G</div>
+          <div className="text-xs text-[#A0A0A0]">Connected, secured</div>
+        </div>
+      </div>
+      <div className="flex items-center gap-3">
+        <div className="text-[#76B9ED]">
+          <Icons.Update />
+        </div>
+        <div>
+          <div className="text-sm font-medium text-white">Windows Update</div>
+          <div className="text-xs text-[#A0A0A0]">
+            Last checked: 14 mins ago
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+);
+
+// --- Pages ---
+
+const HomeContent = ({ profile }) => (
+  <div className="animate-in fade-in slide-in-from-bottom-2 duration-300">
+    <h1 className="text-2xl font-semibold text-white mb-6">Home</h1>
+
+    <HeroCard profile={profile} />
+
+    <h3 className="text-[15px] font-semibold text-white mb-3">
+      Recommended settings
+    </h3>
+
+    {/* Recommended Settings Card */}
+    <div className="bg-[#2B2B2B] border border-[#353535] rounded-lg p-0 mb-6 overflow-hidden">
+      <div className="flex items-center justify-between p-4 hover:bg-[#323232] transition-colors cursor-pointer border-b border-[#353535]">
+        <div className="flex items-center gap-4">
+          <div className="text-xl">✨</div>
+          <div>
+            <div className="text-[14px] text-white">
+              Turn on dark mode based on sunset
+            </div>
+            <div className="text-xs text-[#A0A0A0]">
+              Automatically switch themes to reduce eye strain
+            </div>
+          </div>
+        </div>
+        <button className="bg-[#3C3C3C] hover:bg-[#444] text-white text-[13px] px-4 py-1.5 rounded-[4px] border border-[#484848]">
+          Apply
+        </button>
+      </div>
+      <div className="flex items-center justify-between p-4 hover:bg-[#323232] transition-colors cursor-pointer">
+        <div className="flex items-center gap-4">
+          <div className="text-xl">⌨️</div>
+          <div>
+            <div className="text-[14px] text-white">Taskbar behaviors</div>
+            <div className="text-xs text-[#A0A0A0]">
+              Customize alignment and badging
+            </div>
+          </div>
+        </div>
+        <Icons.ArrowRight />
+      </div>
+    </div>
+
+    <div className="grid grid-cols-2 gap-4">
+      <SettingsCard
+        image="https://upload.wikimedia.org/wikipedia/commons/4/44/Microsoft_logo.svg"
+        title="Microsoft 365"
+        subtitle="View benefits"
+        large
+      />
+      <SettingsCard
+        icon="☁️"
+        title="Cloud storage"
+        subtitle="You are using 0% of your 5 GB"
+      />
+      <SettingsCard icon="🎮" title="Gaming" subtitle="Game Mode is On" />
+      <SettingsCard
+        icon="🎨"
+        title="Personalization"
+        subtitle="Background, colors, themes"
+      />
+    </div>
+  </div>
+);
+
+const NerdySettings = () => {
+  const { userProfile } = useSystemStore();
+  const [activeTab, setActiveTab] = useState("Home");
+  const [searchQuery, setSearchQuery] = useState("");
+
+  const navItems = [
+    { id: "Home", icon: Icons.Home, label: "Home" },
+    { id: "System", icon: Icons.System, label: "System" },
+    { id: "Bluetooth", icon: Icons.Bluetooth, label: "Bluetooth & devices" },
+    { id: "Network", icon: Icons.Network, label: "Network & internet" },
     {
-      id: "always",
-      label: "Always Visible",
-      desc: "Dock is always shown at the bottom",
+      id: "Personalization",
+      icon: Icons.Personalization,
+      label: "Personalization",
     },
-    {
-      id: "auto",
-      label: "Auto Hide",
-      desc: "Dock hides automatically and shows on hover",
-    },
-    {
-      id: "hidden",
-      label: "Always Hidden",
-      desc: "Dock is hidden until changed",
-    },
+    { id: "Apps", icon: Icons.Apps, label: "Apps" },
+    { id: "Accounts", icon: Icons.Accounts, label: "Accounts" },
+    { id: "Time", icon: Icons.Time, label: "Time & language" },
+    { id: "Gaming", icon: Icons.Gaming, label: "Gaming" },
+    { id: "Accessibility", icon: Icons.Accessibility, label: "Accessibility" },
+    { id: "Privacy", icon: Icons.Privacy, label: "Privacy & security" },
+    { id: "Update", icon: Icons.Update, label: "Windows Update" },
   ];
 
   return (
-    <div className="space-y-4">
-      <h2 className="text-xl font-semibold">Dock Behavior</h2>
-      <div className="space-y-2">
-        {options.map((opt) => (
-          <button
-            key={opt.id}
-            onClick={() => setDockMode(opt.id)}
-            className={clsx(
-              "w-full flex items-center justify-between p-4 rounded-xl border-2 transition-all text-left group",
-              dockMode === opt.id
-                ? "border-blue-500 bg-blue-50/50"
-                : "border-gray-200 hover:border-gray-300 bg-white"
-            )}
-          >
-            <div>
-              <div className="font-medium text-gray-800">{opt.label}</div>
-              <div className="text-sm text-gray-500">{opt.desc}</div>
-            </div>
-            <div
-              className={clsx(
-                "w-5 h-5 rounded-full border-2 flex items-center justify-center",
-                dockMode === opt.id ? "border-blue-500" : "border-gray-300"
-              )}
-            >
-              {dockMode === opt.id && (
-                <div className="w-2.5 h-2.5 rounded-full bg-blue-500" />
-              )}
-            </div>
-          </button>
-        ))}
-      </div>
-      <div className="text-sm text-gray-500 mt-4 bg-yellow-50 p-3 rounded-lg border border-yellow-100">
-        Note: Dock is always hidden when an app is in Fullscreen mode.
-      </div>
-    </div>
-  );
-};
-
-const AppearanceSettings = () => {
-  const { theme, setTheme } = useSystemStore();
-  return (
-    <div className="space-y-4">
-      <h2 className="text-xl font-semibold">Appearance</h2>
-      <div className="flex gap-4">
-        {/* Light */}
-        <button
-          onClick={() => setTheme("light")}
-          className={clsx(
-            "flex-1 p-4 border-2 rounded-xl flex flex-col items-center gap-2 transition-all",
-            theme === "light"
-              ? "border-blue-500 bg-blue-50/50"
-              : "border-gray-200 hover:border-gray-300"
-          )}
-        >
-          <div className="w-full h-24 bg-gray-100 rounded border border-gray-200 relative overflow-hidden shadow-inner">
-            <div className="absolute top-0 w-full h-6 bg-white border-b"></div>
-          </div>
-          <span className="font-medium">Light</span>
-        </button>
-        {/* Dark */}
-        <button
-          onClick={() => setTheme("dark")}
-          className={clsx(
-            "flex-1 p-4 border-2 rounded-xl flex flex-col items-center gap-2 transition-all",
-            theme === "dark"
-              ? "border-blue-500 bg-blue-50/50"
-              : "border-gray-200 hover:border-gray-300"
-          )}
-        >
-          <div className="w-full h-24 bg-gray-800 rounded border border-gray-700 relative overflow-hidden shadow-inner">
-            <div className="absolute top-0 w-full h-6 bg-gray-900 border-b border-gray-700"></div>
-          </div>
-          <span className="font-medium">Dark</span>
-        </button>
-      </div>
-    </div>
-  );
-};
-
-const WallpaperSettings = () => {
-  const { wallpaper, setWallpaper } = useSystemStore();
-  return (
-    <div className="space-y-4">
-      <h2 className="text-xl font-semibold">Wallpaper</h2>
-      <div className="grid grid-cols-2 gap-4">
-        {WALLPAPERS.map((wp) => (
-          <button
-            key={wp.id}
-            onClick={() => setWallpaper(wp.url)}
-            className={clsx(
-              "relative aspect-video rounded-lg overflow-hidden border-2 transition-all group",
-              wallpaper === wp.url
-                ? "border-blue-500 ring-2 ring-blue-200"
-                : "border-transparent hover:scale-[1.02]"
-            )}
-          >
-            <img
-              src={wp.url}
-              alt={wp.name}
-              className="w-full h-full object-cover"
-            />
-            <div className="absolute bottom-0 left-0 right-0 bg-black/40 text-white text-xs p-1 text-center backdrop-blur-md translate-y-full group-hover:translate-y-0 transition-transform">
-              {wp.name}
-            </div>
-          </button>
-        ))}
-      </div>
-      <div className="text-xs text-gray-500 mt-2">
-        Display: {window.screen.width}x{window.screen.height} •{" "}
-        {window.innerWidth < 768 ? "Mobile" : "Desktop"}
-      </div>
-    </div>
-  );
-};
-
-const ConnectivitySettings = () => {
-  const [isOnline, setIsOnline] = useState(navigator.onLine);
-
-  useEffect(() => {
-    const setOnline = () => setIsOnline(true);
-    const setOffline = () => setIsOnline(false);
-    window.addEventListener("online", setOnline);
-    window.addEventListener("offline", setOffline);
-    return () => {
-      window.removeEventListener("online", setOnline);
-      window.removeEventListener("offline", setOffline);
-    };
-  }, []);
-
-  return (
-    <div className="space-y-6">
-      <h2 className="text-xl font-semibold">Connectivity</h2>
-
-      <div className="bg-white p-4 rounded-xl border flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div
-            className={clsx(
-              "w-10 h-10 rounded-full flex items-center justify-center text-xl",
-              isOnline
-                ? "bg-green-100 text-green-600"
-                : "bg-red-100 text-red-600"
-            )}
-          >
-            {isOnline ? "wifi" : "off"}
-          </div>
-          <div>
-            <div className="font-medium">Wi-Fi</div>
-            <div className="text-sm text-gray-500">
-              {isOnline ? "Connected" : "Disconnected"}
-            </div>
-          </div>
-        </div>
-        <div
-          className={clsx(
-            "w-3 h-3 rounded-full",
-            isOnline ? "bg-green-500" : "bg-red-500"
-          )}
-        ></div>
-      </div>
-
-      <div className="bg-white p-4 rounded-xl border flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-xl">
-            B
-          </div>
-          <div>
-            <div className="font-medium">Bluetooth</div>
-            <div className="text-sm text-gray-500">On</div>
-          </div>
-        </div>
-        <div className="text-sm text-gray-400">Discoverable as "NerdyOS"</div>
-      </div>
-    </div>
-  );
-};
-
-const StorageSettings = () => {
-  const [storageInfo, setStorageInfo] = useState({
-    used: 0,
-    quota: 0,
-    fileCount: 0,
-  });
-
-  useEffect(() => {
-    const checkStorage = async () => {
-      if (navigator.storage && navigator.storage.estimate) {
-        const estimate = await navigator.storage.estimate();
-        // Count files from IDB
-        let count = 0;
-        try {
-          const files = await getFiles("root"); // rough check, recursive is better but simple for now
-          // actually better to just fetch all if possible or simulate
-          count = 12; // simulated for speed if recursive expensive
-        } catch (e) {}
-
-        setStorageInfo({
-          used: estimate.usage || 0,
-          quota: estimate.quota || 1024 * 1024 * 1024,
-          fileCount: count,
-        });
-      }
-    };
-    checkStorage();
-  }, []);
-
-  const usedMB = (storageInfo.used / (1024 * 1024)).toFixed(2);
-  const quotaMB = (storageInfo.quota / (1024 * 1024)).toFixed(0);
-  const percent = Math.min(100, (storageInfo.used / storageInfo.quota) * 100);
-
-  return (
-    <div className="space-y-6">
-      <h2 className="text-xl font-semibold">Storage</h2>
-      <div className="bg-white p-6 rounded-xl border space-y-4">
-        <div className="flex justify-between items-end">
-          <div>
-            <div className="text-3xl font-bold text-gray-800">{usedMB} MB</div>
-            <div className="text-sm text-gray-500">used of {quotaMB} MB</div>
-          </div>
-          <div className="text-right">
-            <div className="font-medium">Macintosh HD</div>
-            <div className="text-xs text-gray-400">IndexedDB Storage</div>
-          </div>
-        </div>
-
-        {/* Progress Bar */}
-        <div className="h-4 bg-gray-100 rounded-full overflow-hidden flex">
-          <div
-            style={{ width: `${percent}%` }}
-            className="bg-blue-500 h-full"
-          ></div>
-        </div>
-
-        <div className="flex gap-4 text-xs font-medium text-gray-500">
-          <div className="flex items-center gap-1">
-            <div className="w-2 h-2 rounded-full bg-blue-500"></div> System Data
-          </div>
-          <div className="flex items-center gap-1">
-            <div className="w-2 h-2 rounded-full bg-gray-300"></div> Available
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-};
-
-const AppSettings = () => {
-  const { disabledApps, toggleAppDisabled } = useSystemStore();
-  const apps = Object.values(APP_REGISTRY);
-
-  return (
-    <div className="space-y-4">
-      <h2 className="text-xl font-semibold">Installed Apps</h2>
-      <div className="space-y-2">
-        {apps.map((app) => {
-          const isDisabled = disabledApps.includes(app.id);
-          return (
-            <div
-              key={app.id}
-              className="flex items-center justify-between p-3 bg-white border rounded-xl"
-            >
-              <div className="flex items-center gap-3">
-                <div
-                  className={clsx(
-                    "w-10 h-10 rounded-lg flex items-center justify-center text-white font-bold",
-                    app.color
-                  )}
-                >
-                  {app.icon && app.icon.length < 3 ? app.icon : app.name[0]}
-                </div>
-                <div>
-                  <div className="font-medium">{app.name}</div>
-                  <div className="text-xs text-gray-500">
-                    {app.id === "settings" || app.id === "finder"
-                      ? "System App"
-                      : "User App"}
-                  </div>
-                </div>
-              </div>
-
-              {/* Toggle - Don't allow disabling critical apps */}
-              {app.id !== "settings" && app.id !== "finder" && (
-                <button
-                  onClick={() => toggleAppDisabled(app.id)}
-                  className={clsx(
-                    "px-3 py-1 rounded-full text-sm font-medium transition-colors",
-                    isDisabled
-                      ? "bg-gray-100 text-gray-500"
-                      : "bg-blue-100 text-blue-600"
-                  )}
-                >
-                  {isDisabled ? "Disabled" : "Enabled"}
-                </button>
-              )}
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  );
-};
-
-const NotificationSettings = () => {
-  const { notificationsEnabled, toggleNotifications } = useSystemStore();
-
-  return (
-    <div className="space-y-4">
-      <h2 className="text-xl font-semibold">Notifications</h2>
-      <div className="bg-white p-4 rounded-xl border flex items-center justify-between">
-        <div>
-          <div className="font-medium">Allow Notifications</div>
-          <div className="text-sm text-gray-500">
-            Show banners from apps and system
-          </div>
-        </div>
-        <button
-          onClick={toggleNotifications}
-          className={clsx(
-            "w-12 h-6 rounded-full p-1 transition-colors relative",
-            notificationsEnabled ? "bg-blue-500" : "bg-gray-300"
-          )}
-        >
-          <div
-            className={clsx(
-              "w-4 h-4 bg-white rounded-full shadow-sm transition-transform",
-              notificationsEnabled ? "translate-x-6" : "translate-x-0"
-            )}
-          ></div>
-        </button>
-      </div>
-    </div>
-  );
-};
-
-const ProfileSettings = () => {
-  const { userProfile, logout } = useSystemStore();
-
-  return (
-    <div className="space-y-6">
-      <h2 className="text-xl font-semibold">Profile</h2>
-      <div className="flex flex-col items-center p-6 bg-white border rounded-xl text-center">
-        <img
-          src={userProfile.avatar}
-          alt="Avatar"
-          className="w-20 h-20 rounded-full mb-4 shadow-sm"
-        />
-        <h3 className="text-lg font-bold">{userProfile.name}</h3>
-        <p className="text-gray-500 text-sm mb-6">{userProfile.email}</p>
-
-        <div className="w-full border-t pt-4 flex flex-col gap-2">
-          <button className="w-full py-2 text-sm text-blue-600 hover:bg-blue-50 rounded-lg">
-            Edit Profile
-          </button>
-          <button
-            onClick={logout}
-            className="w-full py-2 text-sm text-red-600 hover:bg-red-50 rounded-lg"
-          >
-            Log Out
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-};
-
-const AboutSettings = () => {
-  return (
-    <div className="space-y-6 text-center pt-8">
-      <div className="w-24 h-24 mx-auto bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-4xl shadow-xl text-white">
-        
-      </div>
-      <div>
-        <h2 className="text-2xl font-bold text-gray-800">NerdyOS</h2>
-        <p className="text-gray-500">Version 1.0.0 (Beta)</p>
-      </div>
-
-      <div className="max-w-xs mx-auto text-sm text-gray-600 space-y-2">
-        <p>
-          A web-based operating system built with React, Tailwind, and Love.
-        </p>
-        <div className="pt-4 text-xs text-gray-400">
-          &copy; 2024 NerdyOS Inc. <br />
-          All rights reserved.
-        </div>
-      </div>
-    </div>
-  );
-};
-
-// --- Main Component ---
-
-const NerdySettings = () => {
-  const [activeCategory, setActiveCategory] = useState("appearance");
-
-  const renderContent = () => {
-    switch (activeCategory) {
-      case "appearance":
-        return <AppearanceSettings />;
-      case "dock":
-        return <DockSettings />;
-      case "wallpaper":
-        return <WallpaperSettings />;
-      case "connectivity":
-        return <ConnectivitySettings />;
-      case "storage":
-        return <StorageSettings />;
-      case "apps":
-        return <AppSettings />;
-      case "notifications":
-        return <NotificationSettings />;
-      case "profile":
-        return <ProfileSettings />;
-      case "about":
-        return <AboutSettings />;
-      default:
-        return <AppearanceSettings />;
-    }
-  };
-
-  return (
-    <AppTemplate
-      title="System Settings"
-      contentClassName="bg-slate-900/30 p-0 flex"
-      sidebar={false}
-    >
+    <div className="flex h-full w-full bg-[#1F1F1F] text-white font-sans overflow-hidden select-none">
       {/* Sidebar */}
-      <div className="w-48 sm:w-60 bg-slate-900/60 border-r border-cyan-400/20 h-full flex flex-col pt-4 overflow-y-auto shrink-0 backdrop-blur-xl">
-        <div className="px-4 mb-2 text-xs font-semibold text-cyan-400/70 uppercase tracking-wider">
-          System
-        </div>
-        <nav className="flex-1 px-2 space-y-0.5">
-          {CATEGORIES.map((cat) => (
-            <button
-              key={cat.id}
-              onClick={() => setActiveCategory(cat.id)}
-              className={clsx(
-                "w-full flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-lg transition-colors text-left",
-                activeCategory === cat.id
-                  ? "bg-cyan-500/20 text-cyan-300 shadow-[0_0_15px_rgba(6,182,212,0.2)] border border-cyan-400/30"
-                  : "text-cyan-50/70 hover:bg-white/5"
-              )}
-            >
-              <span
-                className={clsx(
-                  "text-lg",
-                  activeCategory === cat.id
-                    ? "text-cyan-400"
-                    : "text-cyan-50/50"
-                )}
-              >
-                {cat.icon === "wifi" ? (
-                  <svg
-                    className="w-5 h-5"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M8.111 16.404a5.5 5.5 0 017.778 0M12 20h.01m-7.08-7.071c3.904-3.905 10.236-3.905 14.141 0M1.394 9.393c5.857-5.857 15.355-5.857 21.213 0"
-                    />
-                  </svg>
-                ) : cat.icon === "grid" ? (
-                  <svg
-                    className="w-5 h-5"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"
-                    />
-                  </svg>
-                ) : cat.icon === "bell" ? (
-                  <svg
-                    className="w-5 h-5"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"
-                    />
-                  </svg>
-                ) : cat.icon === "user" ? (
-                  <svg
-                    className="w-5 h-5"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
-                    />
-                  </svg>
-                ) : cat.icon === "info" ? (
-                  <svg
-                    className="w-5 h-5"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                    />
-                  </svg>
-                ) : (
-                  cat.icon
-                )}
+      <div className="w-[280px] bg-[#202020] flex flex-col pt-0 pb-4 h-full shrink-0">
+        {/* Profile Header */}
+        <div className="px-4 py-6 mb-2">
+          <div className="flex items-center gap-3 mb-6 px-2">
+            <img
+              src={userProfile.avatar}
+              className="w-8 h-8 rounded-full object-cover"
+              alt="Profile"
+            />
+            <div className="flex flex-col">
+              <span className="text-[13px] font-semibold leading-tight">
+                {userProfile.name}
               </span>
-              <span>{cat.label}</span>
-            </button>
+              <span className="text-[11px] text-[#A0A0A0] leading-tight truncate max-w-[150px]">
+                {userProfile.email}
+              </span>
+            </div>
+          </div>
+
+          {/* Search Bar */}
+          <div className="relative group">
+            <div className="absolute left-3 top-1/2 -translate-y-1/2 text-[#A0A0A0] group-focus-within:text-[#76B9ED]">
+              <Icons.Search />
+            </div>
+            <input
+              type="text"
+              placeholder="Find a setting"
+              className="w-full bg-[#2D2D2D] border-b border-[#8D8D8D] group-focus-within:border-[#76B9ED] text-[13px] text-white placeholder-[#A0A0A0] pl-9 pr-3 py-1.5 outline-none transition-colors rounded-t-[4px]"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
+          </div>
+        </div>
+
+        {/* Nav Items */}
+        <div className="flex-1 overflow-y-auto px-2 scrollbar-thin scrollbar-thumb-[#444] scrollbar-track-transparent">
+          {navItems.map((item) => (
+            <SidebarItem
+              key={item.id}
+              icon={item.icon}
+              label={item.label}
+              isActive={activeTab === item.id}
+              onClick={() => setActiveTab(item.id)}
+            />
           ))}
-        </nav>
+        </div>
       </div>
 
-      {/* Content Area */}
-      <div className="flex-1 overflow-y-auto p-8 min-h-0 bg-slate-900/20">
-        <div className="max-w-2xl mx-auto text-cyan-50">{renderContent()}</div>
+      {/* Main Content */}
+      <div className="flex-1 bg-[#1C1C1C] h-full overflow-y-auto p-8 relative">
+        {/* Top Window Drag Area protection (standard window titlebar handles this, but we need spacing) */}
+
+        <div className="max-w-[1000px] mx-auto pb-10">
+          {activeTab === "Home" && <HomeContent profile={userProfile} />}
+          {activeTab !== "Home" && (
+            <div className="flex flex-col items-center justify-center h-[60vh] text-[#A0A0A0]">
+              <div className="text-4xl mb-4 text-[#333]">🚧</div>
+              <h2 className="text-lg font-semibold text-white mb-2">
+                {activeTab}
+              </h2>
+              <p className="text-sm">This section is under construction.</p>
+            </div>
+          )}
+        </div>
       </div>
-    </AppTemplate>
+    </div>
   );
 };
 

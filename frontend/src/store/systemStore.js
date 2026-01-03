@@ -20,6 +20,12 @@ const useSystemStore = create(
             disabledApps: [], // List of app IDs that are disabled
             pinnedApps: ['finder', 'browser', 'settings'], // Default pinned apps
 
+            // Connectivity & Hardware
+            wifi: true,
+            bluetooth: true,
+            airdrop: true,
+            battery: { level: 100, charging: false },
+
             // User Profile (Mock for now, normally from Auth)
             userProfile: {
                 name: "Nerdy User",
@@ -34,6 +40,11 @@ const useSystemStore = create(
             setBrightness: (val) => set({ brightness: val }),
             setVolume: (val) => set({ volume: val }),
             toggleNotifications: () => set((state) => ({ notificationsEnabled: !state.notificationsEnabled })),
+
+            toggleWifi: (status) => set((state) => ({ wifi: typeof status === 'boolean' ? status : !state.wifi })), // Allow explicit set or toggle
+            toggleBluetooth: () => set((state) => ({ bluetooth: !state.bluetooth })),
+            toggleAirdrop: () => set((state) => ({ airdrop: !state.airdrop })),
+            setBattery: (battery) => set({ battery }),
 
             toggleAppDisabled: (appId) => set((state) => {
                 const isDisabled = state.disabledApps.includes(appId);
@@ -71,6 +82,9 @@ const useSystemStore = create(
                 theme: state.theme,
                 wallpaper: state.wallpaper,
                 notificationsEnabled: state.notificationsEnabled,
+                wifi: state.wifi,
+                bluetooth: state.bluetooth,
+                airdrop: state.airdrop,
                 dockMode: state.dockMode,
                 disabledApps: state.disabledApps,
                 disabledApps: state.disabledApps,
@@ -81,5 +95,42 @@ const useSystemStore = create(
         }
     )
 );
+
+// Initialize listeners outside the hook to avoid multiple subscriptions if called in components
+if (typeof window !== 'undefined') {
+    // Battery
+    if (navigator.getBattery) {
+        navigator.getBattery().then(battery => {
+            useSystemStore.getState().setBattery({
+                level: Math.round(battery.level * 100),
+                charging: battery.charging
+            });
+
+            battery.addEventListener('levelchange', () => {
+                useSystemStore.getState().setBattery({
+                    level: Math.round(battery.level * 100),
+                    charging: battery.charging
+                });
+            });
+
+            battery.addEventListener('chargingchange', () => {
+                useSystemStore.getState().setBattery({
+                    level: Math.round(battery.level * 100),
+                    charging: battery.charging
+                });
+            });
+        });
+    }
+
+    // Network
+    window.addEventListener('online', () => useSystemStore.getState().toggleWifi(true));
+    window.addEventListener('offline', () => useSystemStore.getState().toggleWifi(false));
+
+    // Initial Network State
+    // We defer this slightly to ensure store is ready or just set it directly
+    setTimeout(() => {
+        useSystemStore.getState().toggleWifi(navigator.onLine);
+    }, 100);
+}
 
 export default useSystemStore;

@@ -4,14 +4,23 @@ import useSystemStore from "../../store/systemStore";
 import useWindowStore from "../../store/windowStore";
 import { getAppById, APP_REGISTRY } from "../appRegistry";
 import ControlPanel from "./ControlPanel";
+import CalendarWidget from "./CalendarWidget";
 
 const MenuBar = () => {
   const [date, setDate] = useState(new Date());
   const [showAppLauncher, setShowAppLauncher] = useState(false);
   const [showControlPanel, setShowControlPanel] = useState(false);
+  const [showCalendar, setShowCalendar] = useState(false);
   const [appContextMenu, setAppContextMenu] = useState(null);
 
-  const { pinnedApps, toggleAppPinned, disabledApps } = useSystemStore();
+  const {
+    pinnedApps,
+    toggleAppPinned,
+    disabledApps,
+    wifi,
+    battery,
+    notificationsEnabled,
+  } = useSystemStore();
   const { activeWindowId, openWindow, windows, toggleMinimize, focusWindow } =
     useWindowStore();
 
@@ -34,13 +43,14 @@ const MenuBar = () => {
     const handleClick = () => {
       setShowAppLauncher(false);
       setShowControlPanel(false);
+      setShowCalendar(false);
       setAppContextMenu(null);
     };
-    if (showAppLauncher || appContextMenu || showControlPanel) {
+    if (showAppLauncher || appContextMenu || showControlPanel || showCalendar) {
       window.addEventListener("click", handleClick);
       return () => window.removeEventListener("click", handleClick);
     }
-  }, [showAppLauncher, appContextMenu, showControlPanel]);
+  }, [showAppLauncher, appContextMenu, showControlPanel, showCalendar]);
 
   // Format: "Mon 2 Jan 3:20 PM"
   const formattedDate =
@@ -64,6 +74,7 @@ const MenuBar = () => {
     openWindow(appId, safeRect);
     setShowAppLauncher(false);
     setShowControlPanel(false);
+    setShowCalendar(false);
     setAppContextMenu(null);
   };
 
@@ -97,25 +108,21 @@ const MenuBar = () => {
   const taskbarAppIds = [...validPinnedApps, ...runningUnpinnedApps];
 
   return (
-    <div className="fixed top-0 w-full h-10 bg-slate-900/80 backdrop-blur-md flex items-center justify-between text-cyan-50 text-sm select-none z-50 shadow-md border-b border-white/5 px-2">
-      {/* Left Side: App Launcher */}
-      <div className="flex items-center gap-3">
+    <div className="fixed top-0 w-full h-10 bg-slate-900/80 backdrop-blur-md flex items-center justify-between text-cyan-50 text-sm select-none z-50 shadow-md border-b border-white/5 pr-2">
+      {/* Left Side: App Launcher + Taskbar Apps */}
+      <div className="flex items-center gap-0">
         {/* App Launcher Icon */}
         <div
-          className="relative hover:bg-white/10 p-1.5 rounded cursor-pointer transition-all"
+          className="relative w-10 h-10 flex items-center justify-center hover:bg-white/10 cursor-pointer transition-all group"
           onClick={(e) => {
             e.stopPropagation();
             setShowAppLauncher(!showAppLauncher);
           }}
         >
-          {/* Grid Icon for App Launcher */}
-          <svg
-            className="w-5 h-5 text-cyan-400 drop-shadow-[0_0_10px_rgba(34,211,238,0.8)]"
-            fill="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path d="M4 4h6v6H4V4zm10 0h6v6h-6V4zM4 14h6v6H4v-6zm10 0h6v6h-6v-6z" />
-          </svg>
+          {/* Custom OS Icon: Smiling Ghost Emoji */}
+          <span className="text-2xl transition-transform group-hover:scale-110 leading-none pb-1">
+            👻
+          </span>
           {/* App Launcher Dropdown */}
           <AnimatePresence>
             {showAppLauncher && (
@@ -252,240 +259,127 @@ const MenuBar = () => {
             </div>
           )}
         </div>
-      </div>
 
-      {/* Center: Top Bar Taskbar */}
-      <div className="absolute left-1/2 transform -translate-x-1/2 flex items-center gap-2">
-        {taskbarAppIds.map((appId) => {
-          const registryItem = APP_REGISTRY[appId];
-          if (!registryItem) return null;
+        {/* Taskbar Icons (Now next to launcher) */}
+        <div className="flex items-center gap-2">
+          {taskbarAppIds.map((appId) => {
+            const registryItem = APP_REGISTRY[appId];
+            if (!registryItem) return null;
 
-          const app = {
-            ...registryItem,
-            color: registryItem.color || "bg-gray-500",
-          };
-          const isOpen = windows.some((w) => w.id === appId);
-          const isActive = activeWindowId === appId;
+            const app = {
+              ...registryItem,
+              color: registryItem.color || "bg-gray-500",
+            };
+            const isOpen = windows.some((w) => w.id === appId);
+            const isActive = activeWindowId === appId;
 
-          return (
-            <div
-              key={appId}
-              className={`relative flex flex-col items-center group cursor-pointer p-1 rounded-lg transition-all ${
-                isActive ? "bg-white/10" : "hover:bg-white/5"
-              }`}
-              onClick={() => {
-                if (isOpen) {
-                  if (
-                    isActive &&
-                    !windows.find((w) => w.id === appId)?.isMinimized
-                  ) {
-                    toggleMinimize(appId);
-                  } else {
-                    openWindow(appId); // Brings to front if already open
-                  }
-                } else {
-                  openWindow(appId);
-                }
-              }}
-              onContextMenu={(e) => handleAppContextMenu(e, appId)}
-            >
+            return (
               <div
-                className={`w-8 h-8 rounded-lg ${app.color} flex items-center justify-center text-white text-sm shadow-md overflow-hidden relative`}
+                key={appId}
+                className={`relative flex flex-col items-center group cursor-pointer p-1 rounded-lg transition-all ${
+                  isActive ? "bg-white/10" : "hover:bg-white/5"
+                }`}
+                onClick={() => {
+                  if (isOpen) {
+                    if (
+                      isActive &&
+                      !windows.find((w) => w.id === appId)?.isMinimized
+                    ) {
+                      toggleMinimize(appId);
+                    } else {
+                      openWindow(appId); // Brings to front if already open
+                    }
+                  } else {
+                    openWindow(appId);
+                  }
+                }}
+                onContextMenu={(e) => handleAppContextMenu(e, appId)}
               >
-                <div className="absolute inset-0 bg-gradient-to-br from-white/30 to-transparent pointer-events-none" />
-                <span className="relative z-10">
-                  {app.icon && app.icon.length < 3 ? (
-                    app.icon
-                  ) : (
-                    <>
-                      {app.icon === "folder" && "📂"}
-                      {app.icon === "settings" && "⚙️"}
-                      {app.icon === "globe" && "🌐"}
-                      {app.icon === "message" && "💬"}
-                      {!["folder", "settings", "globe", "message"].includes(
-                        app.icon
-                      ) && app.name[0]}
-                    </>
-                  )}
-                </span>
-              </div>
-
-              {/* Active/Open Dot Indicator */}
-              {isOpen && (
                 <div
-                  className={`absolute -bottom-1 w-1 h-1 rounded-full ${
-                    isActive ? "bg-cyan-400" : "bg-white/50"
-                  }`}
-                />
-              )}
-            </div>
-          );
-        })}
-      </div>
-      {/* Active App Icon */}
-      {activeApp && (
-        <div className="flex items-center gap-1 group">
-          {/* Pin Toggle Button */}
-          <div
-            className={`p-1 rounded hover:bg-white/10 cursor-pointer transition-colors ${
-              pinnedApps.includes(activeApp.id)
-                ? "text-cyan-400"
-                : "text-slate-500 hover:text-cyan-200"
-            }`}
-            title={
-              pinnedApps.includes(activeApp.id)
-                ? "Unpin from Dock"
-                : "Pin to Dock"
-            }
-            onClick={() => toggleAppPinned(activeApp.id)}
-          >
-            {pinnedApps.includes(activeApp.id) ? (
-              <svg
-                className="w-3.5 h-3.5"
-                fill="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path d="M16 12V4H8v8l-2 2v2h12v-2l-2-2zm-5-6h2v6h-2V6zm1 16c1.1 0 2-.9 2-2H10c0 1.1.9 2 2 2z" />
-              </svg>
-            ) : (
-              <svg
-                className="w-3.5 h-3.5"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"
-                />
-              </svg>
-            )}
-          </div>
-
-          <div
-            className="flex items-center gap-2 px-1 py-1 rounded hover:bg-white/10 transition-colors cursor-pointer group"
-            onClick={() => toggleMinimize(activeApp.id)}
-          >
-            <div
-              className={`w-6 h-6 rounded flex items-center justify-center text-white text-xs ${activeApp.color} shadow-sm relative overflow-hidden`}
-            >
-              {/* Gloss Effect */}
-              <div className="absolute inset-0 bg-gradient-to-br from-white/30 to-transparent pointer-events-none" />
-              <span className="relative z-10 text-base">
-                {activeApp.icon === "folder" && "📂"}
-                {activeApp.icon === "bag" && "🛍️"}
-                {activeApp.icon === "globe" && "🌐"}
-                {activeApp.icon === "message" && "💬"}
-                {activeApp.icon === "mail" && "✉️"}
-                {activeApp.icon === "map" && "🗺️"}
-                {activeApp.icon === "photo" && "🖼️"}
-                {activeApp.icon === "calendar" && "📅"}
-                {activeApp.icon === "note" && "📝"}
-                {activeApp.icon === "settings" && "⚙️"}
-                {activeApp.icon === "sparkles" && "✨"}
-                {![
-                  "folder",
-                  "bag",
-                  "globe",
-                  "message",
-                  "mail",
-                  "map",
-                  "photo",
-                  "calendar",
-                  "note",
-                  "settings",
-                  "sparkles",
-                ].includes(activeApp.icon) && activeApp.name[0]}
-              </span>
-            </div>
-            {/* Window Preview Tooltip on hover */}
-            <div className="absolute left-0 top-full mt-2 w-48 h-32 opacity-0 group-hover:opacity-100 transition-all duration-200 pointer-events-none z-[70] transform scale-0 group-hover:scale-100 origin-top-left">
-              {/* Preview Container */}
-              <div className="w-full h-full bg-slate-900/90 backdrop-blur-xl border border-cyan-400/30 rounded-xl overflow-hidden shadow-2xl flex flex-col">
-                {/* Miniature Title Bar */}
-                <div className="h-6 bg-slate-800/80 border-b border-cyan-400/10 flex items-center px-2 gap-1.5">
-                  <div
-                    className={`w-3 h-3 rounded-full ${activeApp.color} flex items-center justify-center text-[6px] text-white`}
-                  >
-                    {activeApp.icon === "folder" && "📂"}
-                    {activeApp.icon === "settings" && "⚙️"}
-                    {activeApp.icon === "globe" && "🌐"}
-                    {activeApp.icon === "message" && "💬"}
-                    {!["folder", "settings", "globe", "message"].includes(
-                      activeApp.icon
-                    ) && activeApp.name[0]}
-                  </div>
-                  <div className="text-[10px] text-cyan-50/70 font-medium truncate">
-                    {activeApp.name}
-                  </div>
+                  className={`w-8 h-8 rounded-lg ${app.color} flex items-center justify-center text-white text-sm shadow-md overflow-hidden relative`}
+                >
+                  <div className="absolute inset-0 bg-gradient-to-br from-white/30 to-transparent pointer-events-none" />
+                  <span className="relative z-10">
+                    {app.icon && app.icon.length < 3 ? (
+                      app.icon
+                    ) : (
+                      <>
+                        {app.icon === "folder" && "📂"}
+                        {app.icon === "settings" && "⚙️"}
+                        {app.icon === "globe" && "🌐"}
+                        {app.icon === "message" && "💬"}
+                        {!["folder", "settings", "globe", "message"].includes(
+                          app.icon
+                        ) && app.name[0]}
+                      </>
+                    )}
+                  </span>
                 </div>
 
-                {/* Preview Content Area */}
-                <div className="flex-1 p-3 flex flex-col items-center justify-center gap-2 relative">
-                  {/* Abstract preview content - matching app color */}
+                {/* Active/Open Dot Indicator */}
+                {isOpen && (
                   <div
-                    className={`w-16 h-12 rounded-lg ${activeApp.color} opacity-20 blur-xl absolute`}
+                    className={`absolute -bottom-1 w-1 h-1 rounded-full ${
+                      isActive ? "bg-cyan-400" : "bg-white/50"
+                    }`}
                   />
-                  <div className="text-3xl drop-shadow-lg z-10">
-                    {activeApp.icon === "folder" && "📂"}
-                    {activeApp.icon === "bag" && "🛍️"}
-                    {activeApp.icon === "globe" && "🌐"}
-                    {activeApp.icon === "message" && "💬"}
-                    {activeApp.icon === "mail" && "✉️"}
-                    {activeApp.icon === "map" && "🗺️"}
-                    {activeApp.icon === "photo" && "🖼️"}
-                    {activeApp.icon === "calendar" && "📅"}
-                    {activeApp.icon === "note" && "📝"}
-                    {activeApp.icon === "settings" && "⚙️"}
-                    {activeApp.icon === "sparkles" && "✨"}
-                    {![
-                      "folder",
-                      "bag",
-                      "globe",
-                      "message",
-                      "mail",
-                      "map",
-                      "photo",
-                      "calendar",
-                      "note",
-                      "settings",
-                      "sparkles",
-                    ].includes(activeApp.icon) && activeApp.name[0]}
-                  </div>
-                  <div className="w-12 h-1 bg-cyan-400/20 rounded-full" />
-                </div>
-
-                {/* Bottom Accent */}
-                <div className="h-1 bg-gradient-to-r from-transparent via-cyan-400/50 to-transparent" />
+                )}
               </div>
-            </div>
-          </div>
-        </div> // Close wrapping div
-      )}
-
+            );
+          })}
+        </div>
+      </div>
       {/* Right Side: Time, WiFi, Control Center, Battery, Notifications */}
       <div className="flex items-center gap-2 pr-2">
         {/* Date & Time */}
-        <div className="hover:bg-white/10 px-2 py-0.5 rounded cursor-default font-medium">
+        <div
+          className={`hover:bg-white/10 px-2 py-0.5 rounded cursor-pointer font-medium transition-colors relative ${
+            showCalendar ? "bg-white/10" : ""
+          }`}
+          onClick={(e) => {
+            e.stopPropagation();
+            setShowCalendar(!showCalendar);
+            setShowControlPanel(false);
+            setShowAppLauncher(false);
+          }}
+        >
           {formattedDate}
+          <AnimatePresence>
+            {showCalendar && <CalendarWidget />}
+          </AnimatePresence>
         </div>
 
         {/* WiFi Icon */}
-        <div className="hover:bg-white/10 p-1.5 rounded cursor-default">
+        <div
+          className={`hover:bg-white/10 p-1.5 rounded cursor-default transition-opacity ${
+            wifi ? "opacity-100" : "opacity-50"
+          }`}
+          title={
+            wifi ? "Wi-Fi: Connected (Online)" : "Wi-Fi: Disconnected (Offline)"
+          }
+        >
           <svg
             className="w-4 h-4"
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"
           >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M8.111 16.404a5.5 5.5 0 017.778 0M12 20h.01m-7.08-7.071c3.904-3.905 10.236-3.905 14.141 0M1.394 9.393c5.857-5.857 15.355-5.857 21.213 0"
-            />
+            {wifi ? (
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M8.111 16.404a5.5 5.5 0 017.778 0M12 20h.01m-7.08-7.071c3.904-3.905 10.236-3.905 14.141 0M1.394 9.393c5.857-5.857 15.355-5.857 21.213 0"
+              />
+            ) : (
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M3 3l18 18M8.111 16.404a5.5 5.5 0 017.778 0M12 20h.01m-7.08-7.071c3.904-3.905 10.236-3.905 14.141 0M1.394 9.393c5.857-5.857 15.355-5.857 21.213 0"
+                className="opacity-50"
+              />
+            )}
           </svg>
         </div>
 
@@ -498,6 +392,7 @@ const MenuBar = () => {
             e.stopPropagation();
             setShowControlPanel(!showControlPanel);
             setShowAppLauncher(false);
+            setShowCalendar(false);
           }}
         >
           <svg
@@ -519,46 +414,48 @@ const MenuBar = () => {
         </div>
 
         {/* Battery Icon */}
-        <div className="hover:bg-white/10 p-1.5 rounded cursor-default">
-          <svg
-            className="w-5 h-3"
-            viewBox="0 0 25 12"
-            fill="none"
-            xmlns="http://www.w3.org/2000/svg"
-          >
-            <rect
-              x="0.5"
-              y="0.5"
-              width="22"
-              height="11"
-              rx="2.5"
-              stroke="currentColor"
+        <div
+          className="hover:bg-white/10 px-2 py-0.5 rounded cursor-default flex items-center gap-2"
+          title={`Battery: ${battery.level}% ${
+            battery.charging ? "(Charging)" : ""
+          }`}
+        >
+          <span className="text-xs font-medium tabular-nums">
+            {battery.level}%
+          </span>
+          <div className="relative w-6 h-3 border border-current rounded-[2px] p-[1px] flex items-center">
+            <div className="absolute -right-1 top-1 w-0.5 h-1.5 bg-current rounded-sm" />
+            <div
+              className={`h-full rounded-[1px] ${
+                battery.level <= 20 && !battery.charging
+                  ? "bg-red-500"
+                  : "bg-current"
+              } ${battery.charging ? "animate-pulse" : ""}`}
+              style={{ width: `${battery.level}%` }}
             />
-            <rect
-              x="23"
-              y="4"
-              width="2"
-              height="4"
-              rx="1"
-              fill="currentColor"
-            />
-            <rect
-              x="2"
-              y="2"
-              width="16"
-              height="8"
-              rx="1"
-              fill="currentColor"
-              className="text-cyan-400 drop-shadow-[0_0_5px_rgba(34,211,238,0.8)]"
-            />
-          </svg>
+            {battery.charging && (
+              <div className="absolute inset-0 flex items-center justify-center">
+                <svg
+                  className="w-2 h-2 text-black fill-current"
+                  viewBox="0 0 24 24"
+                >
+                  <path d="M13 2L3 14H11V22L21 10H13V2Z" />
+                </svg>
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Notification Icon */}
-        <div className="hover:bg-white/10 p-1.5 rounded cursor-default">
+        <div
+          className={`hover:bg-white/10 p-1.5 rounded cursor-pointer ${
+            !notificationsEnabled ? "opacity-50" : ""
+          }`}
+          title="Notifications"
+        >
           <svg
             className="w-4 h-4"
-            fill="none"
+            fill={notificationsEnabled ? "currentColor" : "none"} // Filled if enabled
             stroke="currentColor"
             viewBox="0 0 24 24"
           >
