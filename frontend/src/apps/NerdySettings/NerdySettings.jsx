@@ -193,6 +193,79 @@ const HeroCard = ({ profile }) => (
 
 // --- Pages ---
 
+const PersonalizationContent = () => {
+  const { wallpaper, setWallpaper, theme, setTheme } = useSystemStore();
+
+  const wallpapers = [
+    "https://images.unsplash.com/photo-1550684848-fac1c5b4e853?q=80&w=2070&auto=format&fit=crop",
+    "https://images.unsplash.com/photo-1579546929518-9e396f3cc809?q=80&w=2070&auto=format&fit=crop", // Gradient
+    "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=2064&auto=format&fit=crop", // Abstract
+    "https://images.unsplash.com/photo-1477346611705-65d1883cee1e?q=80&w=2070&auto=format&fit=crop", // Mountains
+    "https://images.unsplash.com/photo-1511497584788-876760111969?q=80&w=1932&auto=format&fit=crop", // Forest
+    "https://images.unsplash.com/photo-1533130061792-649d45e41255?q=80&w=2072&auto=format&fit=crop", // Nebula
+  ];
+
+  return (
+    <div className="animate-in fade-in slide-in-from-bottom-2 duration-300">
+      <h1 className="text-2xl font-semibold text-white mb-6">
+        Personalization
+      </h1>
+
+      <div className="mb-8">
+        <h3 className="text-sm font-semibold text-white mb-4">
+          Select a theme to apply
+        </h3>
+        <div className="flex gap-4">
+          {/* Light/Dark Toggle Mockups */}
+          <div
+            className={`w-32 h-20 rounded-lg border-2 cursor-pointer relative overflow-hidden ${
+              theme === "light" ? "border-cyan-400" : "border-gray-600"
+            }`}
+            onClick={() => setTheme("light")}
+          >
+            <div className="absolute inset-0 bg-gray-200 flex items-center justify-center text-black font-bold text-xs">
+              Light
+            </div>
+          </div>
+          <div
+            className={`w-32 h-20 rounded-lg border-2 cursor-pointer relative overflow-hidden ${
+              theme === "dark" ? "border-cyan-400" : "border-gray-600"
+            }`}
+            onClick={() => setTheme("dark")}
+          >
+            <div className="absolute inset-0 bg-[#1e1e1e] flex items-center justify-center text-white font-bold text-xs">
+              Dark
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="mb-8">
+        <h3 className="text-sm font-semibold text-white mb-4">Background</h3>
+        <div className="grid grid-cols-3 gap-4">
+          {wallpapers.map((wp, idx) => (
+            <div
+              key={idx}
+              className={`aspect-video rounded-lg overflow-hidden cursor-pointer border-2 transition-all ${
+                wallpaper === wp
+                  ? "border-cyan-400 scale-105"
+                  : "border-transparent hover:scale-105"
+              }`}
+              onClick={() => setWallpaper(wp)}
+            >
+              <img
+                src={wp}
+                alt={`Wallpaper ${idx}`}
+                className="w-full h-full object-cover"
+              />
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const HomeContent = ({ profile }) => (
   <div className="animate-in fade-in slide-in-from-bottom-2 duration-300">
     <h1 className="text-2xl font-semibold text-white mb-6">Home</h1>
@@ -248,11 +321,6 @@ const HomeContent = ({ profile }) => (
         subtitle="You are using 0% of your 5 GB"
       />
       <SettingsCard icon="🎮" title="Gaming" subtitle="Game Mode is On" />
-      <SettingsCard
-        icon="🎨"
-        title="Personalization"
-        subtitle="Background, colors, themes"
-      />
     </div>
   </div>
 );
@@ -338,7 +406,8 @@ const NerdySettings = () => {
 
         <div className="max-w-[1000px] mx-auto pb-10">
           {activeTab === "Home" && <HomeContent profile={userProfile} />}
-          {activeTab !== "Home" && (
+          {activeTab === "Personalization" && <PersonalizationContent />}
+          {activeTab !== "Home" && activeTab !== "Personalization" && (
             <div className="flex flex-col items-center justify-center h-[60vh] text-[#A0A0A0]">
               <div className="text-4xl mb-4 text-[#333]">🚧</div>
               <h2 className="text-lg font-semibold text-white mb-2">

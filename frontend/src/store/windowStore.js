@@ -10,20 +10,37 @@ const useWindowStore = create(
             activeWindowId: null,
             _maxWindows: 10, // Performance limit
 
-            openWindow: (appId, originRect = null) => {
+            openWindow: (appId, props = {}, originRect = null) => {
                 const state = get();
-                const existingWindow = state.windows.find((w) => w.id === appId);
+                // Check if window exists. If passing props, we might want to update them or open a new instance?
+                // For now, let's just focus existing window if ID matches, but maybe we want to allow multiple instances for some apps?
+                // The current ID is the appId, so only one instance per app is allowed currently (e.g. only one "finder").
+                // If we want multiple "doc" windows, we need unique IDs.
+                // For now, let's stick to single instance per app ID for simplicity, OR modify ID generation.
+                // If opening 'doc' with a file, we might want to update the existing doc window's props if it's open.
+
+                let existingWindow = state.windows.find((w) => w.appId === appId);
+
+                // If we want to support multiple docs, we need to change how we identify windows.
+                // But let's keep it simple: single instance for now, but update props.
 
                 if (existingWindow) {
-                    // Restore if minimized
-                    if (existingWindow.isMinimized) {
+                    // Update props if provided (e.g. opening a new file in existing editor)
+                    if (Object.keys(props).length > 0) {
                         set({
-                            windows: state.windows.map(w => w.id === appId ? { ...w, isMinimized: false } : w),
-                            activeWindowId: appId
+                            windows: state.windows.map(w => w.id === existingWindow.id ? { ...w, props: { ...w.props, ...props }, isMinimized: false } : w),
+                            activeWindowId: existingWindow.id
                         });
                     } else {
-                        // Just focus
-                        set({ activeWindowId: appId });
+                        // Just restore
+                        if (existingWindow.isMinimized) {
+                            set({
+                                windows: state.windows.map(w => w.id === existingWindow.id ? { ...w, isMinimized: false } : w),
+                                activeWindowId: existingWindow.id
+                            });
+                        } else {
+                            set({ activeWindowId: existingWindow.id });
+                        }
                     }
                     return;
                 }
@@ -42,14 +59,15 @@ const useWindowStore = create(
 
                 set({
                     windows: [...state.windows, {
-                        id: appId,
+                        id: appId, // Single instance per app for now
                         appId: appId,
                         title: appConfig.name,
                         isMinimized: false,
                         isFullscreen: window.innerWidth < 768,
                         snapState: null,
                         preSnapState: null,
-                        launchOrigin: originRect // { x, y, width, height }
+                        launchOrigin: originRect, // { x, y, width, height }
+                        props: props // Store custom props
                     }],
                     activeWindowId: appId,
                 });

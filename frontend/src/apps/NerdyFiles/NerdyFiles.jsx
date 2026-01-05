@@ -1,52 +1,50 @@
 import { useState, useEffect } from "react";
 import AppTemplate from "../AppTemplate";
 import clsx from "clsx";
-import { getFiles, createFile, seedFileSystem } from "../../services/indexedDb";
+import fs from "../../services/fileSystem";
+import useWindowStore from "../../store/windowStore";
 
 const SIDEBAR_ITEMS = [
-  { id: "airdrop", label: "AirDrop", icon: "📡" },
-  { id: "recents", label: "Recents", icon: "🕒" },
-  { id: "applications", label: "Applications", icon: "🤖" },
-  { id: "desktop", label: "Desktop", icon: "🖥️" },
-  { id: "documents", label: "Documents", icon: "📄" },
-  { id: "downloads", label: "Downloads", icon: "⬇️" },
+  { id: "/home", label: "Home", icon: "🏠" },
+  { id: "/home/desktop", label: "Desktop", icon: "🖥️" },
+  { id: "/home/documents", label: "Documents", icon: "📄" },
+  { id: "/home/downloads", label: "Downloads", icon: "⬇️" },
+  { id: "/home/pictures", label: "Pictures", icon: "🖼️" },
+  { id: "/home/music", label: "Music", icon: "🎵" },
 ];
 
 const NerdyFiles = () => {
-  const [activeSidebarItem, setActiveSidebarItem] = useState("desktop");
-  const [currentPath, setCurrentPath] = useState("desktop"); // Default to desktop
+  const [activeSidebarItem, setActiveSidebarItem] = useState("/home/desktop");
+  const [currentPath, setCurrentPath] = useState("/home/desktop");
   const [files, setFiles] = useState([]);
   const [viewMode, setViewMode] = useState("grid");
   const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    const init = async () => {
-      await seedFileSystem();
-      fetchFiles();
-    };
-    init();
-  }, []);
+  const { openWindow } = useWindowStore();
 
   useEffect(() => {
     fetchFiles();
   }, [currentPath]);
 
-  // Sync sidebar with current path if it matches a sidebar item
+  // Sync sidebar with current path
   useEffect(() => {
+    // Check if current path matches strictly or is a child of sidebar item (optional logic)
     if (SIDEBAR_ITEMS.some((item) => item.id === currentPath)) {
       setActiveSidebarItem(currentPath);
     } else {
-      setActiveSidebarItem(null); // Deselect if deep in a folder not in sidebar
+      setActiveSidebarItem(null);
     }
   }, [currentPath]);
 
   const fetchFiles = async () => {
     setLoading(true);
     try {
-      // Special handling for "root" or other sidebar items that map differently
-      // For simplicity, we assume sidebar IDs are valid parentIds for now
-      const fetched = await getFiles(currentPath);
-      setFiles(fetched || []);
+      const fetched = await fs.ls(currentPath);
+      // Sort: Directories first, then files
+      const sorted = fetched.sort((a, b) => {
+        if (a.type === b.type) return a.name.localeCompare(b.name);
+        return a.type === "directory" ? -1 : 1;
+      });
+      setFiles(sorted);
     } catch (error) {
       console.error("Failed to fetch files:", error);
       setFiles([]);
@@ -55,37 +53,54 @@ const NerdyFiles = () => {
     }
   };
 
-  const handleSidebarClick = (id) => {
-    // If it's a special ID like 'recents' or 'airdrop', we might want custom logic later.
-    // For now, treat them as folder IDs. 'applications' etc might be empty.
-    setActiveSidebarItem(id);
-    setCurrentPath(id);
+  const handleSidebarClick = (path) => {
+    setCurrentPath(path);
   };
 
   const handleFileClick = (file) => {
-    if (file.type === "folder") {
-      setCurrentPath(file.id);
+    if (file.type === "directory") {
+      setCurrentPath(file.path);
+    } else {
+      // Open file
+      if (file.name.endsWith(".txt") || file.name.endsWith(".md")) {
+        openWindow("doc", { filePath: file.path });
+      } else {
+        // Default fallback
+        alert(`Opening ${file.name}`);
+      }
     }
+  };
+
+  const handleNavigateUp = () => {
+    if (currentPath === "/" || currentPath === "/home") return; // Optional constraint
+    const parent =
+      currentPath.substring(0, currentPath.lastIndexOf("/")) || "/";
+    setCurrentPath(parent);
   };
 
   const handleCreateFolder = async () => {
     const name = prompt("Enter folder name:", "New Folder");
     if (!name) return;
+    const newPath = currentPath === "/" ? `/${name}` : `${currentPath}/${name}`;
 
     try {
-      await createFile({
-        parentId: currentPath,
-        name,
-        type: "folder",
-      });
+      await fs.mkdir(newPath);
       fetchFiles();
     } catch (err) {
-      alert("Failed to create folder");
+      alert(err.message);
     }
   };
 
   const toolbarActions = (
     <div className="flex gap-2 text-sm items-center">
+      <button
+        onClick={handleNavigateUp}
+        disabled={currentPath === "/"}
+        className="px-2 py-1 rounded text-gray-600 hover:bg-black/5 disabled:opacity-30"
+      >
+        ⬆️ Up
+      </button>
+      <div className="h-4 w-px bg-gray-300 mx-1"></div>
       <button
         onClick={handleCreateFolder}
         className="px-2 py-1 rounded text-gray-600 hover:bg-black/5 transition-colors text-xs flex items-center gap-1"
@@ -149,6 +164,11 @@ const NerdyFiles = () => {
 
         {/* Main Content */}
         <div className="flex-1 flex flex-col bg-white/80">
+          {/* Breadcrumb / Path Bar */}
+          <div className="px-4 py-2 border-b border-gray-200 text-xs text-gray-500 flex items-center gap-2">
+            <span>📂</span> {currentPath}
+          </div>
+
           {/* Scrollable File Area */}
           <div className="flex-1 overflow-auto p-6" onClick={() => {}}>
             {loading ? (
@@ -163,12 +183,12 @@ const NerdyFiles = () => {
               <div className="grid grid-cols-[repeat(auto-fill,minmax(100px,1fr))] gap-6">
                 {files.map((file) => (
                   <div
-                    key={file.id}
+                    key={file.path}
                     onDoubleClick={() => handleFileClick(file)}
                     className="flex flex-col items-center gap-3 group p-2 rounded-xl hover:bg-blue-50/80 cursor-default transition-colors"
                   >
                     <div className="w-16 h-16 bg-gradient-to-br from-gray-100 to-gray-200 rounded-xl flex items-center justify-center text-3xl shadow-sm group-hover:scale-110 group-hover:shadow-md transition-all duration-300">
-                      {file.type === "folder" ? "📁" : "📄"}
+                      {file.type === "directory" ? "📁" : "📄"}
                     </div>
                     <span className="text-xs text-center text-gray-600 font-medium truncate w-full group-hover:text-blue-600 px-1 select-none">
                       {file.name}
@@ -185,13 +205,13 @@ const NerdyFiles = () => {
                 </div>
                 {files.map((file) => (
                   <div
-                    key={file.id}
+                    key={file.path}
                     onDoubleClick={() => handleFileClick(file)}
                     className="grid grid-cols-4 items-center text-sm py-2 px-4 rounded-lg hover:bg-blue-50 cursor-default even:bg-gray-50/30 transition-colors group"
                   >
                     <div className="col-span-2 flex items-center gap-3">
                       <span className="text-lg opacity-80">
-                        {file.type === "folder" ? "📁" : "📄"}
+                        {file.type === "directory" ? "📁" : "📄"}
                       </span>
                       <span className="truncate font-medium text-gray-700 group-hover:text-blue-600 select-none">
                         {file.name}

@@ -1,9 +1,15 @@
 import NerdyFiles from "../apps/NerdyFiles/NerdyFiles";
 import NerdySettings from "../apps/NerdySettings/NerdySettings";
 import NerdyBrowser from "../apps/NerdyBrowser/NerdyBrowser";
+import NerdyShell from "../apps/NerdyShell/NerdyShell";
+import NerdyCalc from "../apps/NerdyCalc/NerdyCalc";
+import NerdyMedia from "../apps/NerdyMedia/NerdyMedia";
+import NerdyWord from "../apps/NerdyOffice/NerdyWord";
+import NerdyStore from "../apps/NerdyStore/NerdyStore";
+import NerdyNotes from "../apps/NerdyNotes/NerdyNotes";
+import SystemMonitor from "../apps/SystemMonitor/SystemMonitor";
 import InDev from "../apps/InDev/InDev";
 
-// Simple placeholder for apps not yet implemented
 const PlaceholderApp = ({ title }) => <InDev appName={title} />;
 
 export const APP_REGISTRY = {
@@ -27,39 +33,87 @@ export const APP_REGISTRY = {
   browser: {
     id: "browser",
     name: "Browser",
-    icon: "globe",
+    icon: "globe", // Material symbol
     component: NerdyBrowser,
-    defaultSize: { width: 1024, height: 768 },
-    color: "bg-cyan-600",
+    defaultSize: { width: 1000, height: 700 }, // Initial launch
+    defaultPosition: { x: 100, y: 50 },
+    color: "bg-orange-500",
+  },
+  terminal: {
+    id: "terminal",
+    name: "Terminal",
+    icon: "computer", // or code symbol
+    component: NerdyShell,
+    defaultSize: { width: 700, height: 500 },
+    color: "bg-black",
+  },
+  calculator: {
+    id: "calculator",
+    name: "Calculator",
+    icon: "calendar", // Using calendar icon for now as placeholder or custom
+    component: NerdyCalc,
+    defaultSize: { width: 300, height: 450 },
+    defaultPosition: { x: 200, y: 200 },
+    color: "bg-gray-700",
+  },
+  media: {
+    id: "media",
+    name: "Media Player",
+    icon: "play_circle",
+    component: NerdyMedia,
+    defaultSize: { width: 800, height: 500 },
+    color: "bg-red-600",
+  },
+  doc: {
+    id: "doc",
+    name: "Nerdy Doc",
+    icon: "article",
+    component: NerdyWord,
+    defaultSize: { width: 800, height: 600 },
+    color: "bg-blue-500",
+  },
+  store: {
+    id: "store",
+    name: "App Store",
+    icon: "bag",
+    component: NerdyStore,
+    defaultSize: { width: 900, height: 600 },
+    color: "bg-purple-600",
   },
   notes: {
     id: "notes",
     name: "Notes",
     icon: "note",
-    component: () => <PlaceholderApp title="Notes" />,
-    defaultSize: { width: 800, height: 600 },
-    color: "bg-yellow-500",
+    component: NerdyNotes, // Now implemented
+    defaultSize: { width: 600, height: 400 },
+    color: "bg-yellow-400",
   },
   calendar: {
     id: "calendar",
     name: "Calendar",
-    icon: "calendar",
+    icon: "calendar_month",
     component: () => <PlaceholderApp title="Calendar" />,
     defaultSize: { width: 800, height: 600 },
     color: "bg-rose-500",
   },
+  monitor: {
+    id: "monitor",
+    name: "System Monitor",
+    icon: "monitoring",
+    component: SystemMonitor,
+    defaultSize: { width: 500, height: 400 },
+    color: "bg-green-600",
+  },
   messages: {
     id: "messages",
     name: "Messages",
-    icon: "message",
+    icon: "forum",
     component: () => <PlaceholderApp title="Messages" />,
     defaultSize: { width: 800, height: 600 },
     color: "bg-emerald-500",
   },
-  // Add other default OS apps as needed
 };
 
-// Helper to get app by ID
 export const getAppById = (id) => APP_REGISTRY[id];
 
 export default APP_REGISTRY;

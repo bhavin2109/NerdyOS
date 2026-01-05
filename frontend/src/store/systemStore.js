@@ -26,6 +26,10 @@ const useSystemStore = create(
             airdrop: true,
             battery: { level: 100, charging: false },
 
+            // OS State
+            isFirstBoot: true,
+            installedApps: ['finder', 'settings', 'browser', 'notes', 'calculator', 'terminal'], // Default installed apps
+
             // User Profile (Mock for now, normally from Auth)
             userProfile: {
                 name: "Nerdy User",
@@ -45,6 +49,18 @@ const useSystemStore = create(
             toggleBluetooth: () => set((state) => ({ bluetooth: !state.bluetooth })),
             toggleAirdrop: () => set((state) => ({ airdrop: !state.airdrop })),
             setBattery: (battery) => set({ battery }),
+
+            completeFirstBoot: () => set({ isFirstBoot: false }),
+
+            installApp: (appId) => set((state) => ({
+                installedApps: state.installedApps.includes(appId)
+                    ? state.installedApps
+                    : [...state.installedApps, appId]
+            })),
+
+            uninstallApp: (appId) => set((state) => ({
+                installedApps: state.installedApps.filter(id => id !== appId)
+            })),
 
             toggleAppDisabled: (appId) => set((state) => {
                 const isDisabled = state.disabledApps.includes(appId);
@@ -90,7 +106,9 @@ const useSystemStore = create(
                 disabledApps: state.disabledApps,
                 pinnedApps: state.pinnedApps,
                 brightness: state.brightness,
-                volume: state.volume
+                volume: state.volume,
+                isFirstBoot: state.isFirstBoot,
+                installedApps: state.installedApps
             }),
         }
     )

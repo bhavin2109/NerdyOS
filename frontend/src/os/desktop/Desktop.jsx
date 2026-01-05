@@ -323,7 +323,7 @@ const Desktop = () => {
                       </div>
                     }
                   >
-                    <AppComponent />
+                    <AppComponent {...win.props} />
                   </Suspense>
                 </Window>
               </div>
