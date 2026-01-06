@@ -8,6 +8,8 @@ import NerdyWord from "../apps/NerdyOffice/NerdyWord";
 import NerdyStore from "../apps/NerdyStore/NerdyStore";
 import NerdyNotes from "../apps/NerdyNotes/NerdyNotes";
 import SystemMonitor from "../apps/SystemMonitor/SystemMonitor";
+import NerdyCalendar from "../apps/NerdyCalendar/NerdyCalendar";
+import NerdyMessages from "../apps/NerdyMessages/NerdyMessages";
 import InDev from "../apps/InDev/InDev";
 
 const PlaceholderApp = ({ title }) => <InDev appName={title} />;
@@ -92,7 +94,7 @@ export const APP_REGISTRY = {
     id: "calendar",
     name: "Calendar",
     icon: "calendar_month",
-    component: () => <PlaceholderApp title="Calendar" />,
+    component: NerdyCalendar,
     defaultSize: { width: 800, height: 600 },
     color: "bg-rose-500",
   },
@@ -108,9 +110,65 @@ export const APP_REGISTRY = {
     id: "messages",
     name: "Messages",
     icon: "forum",
-    component: () => <PlaceholderApp title="Messages" />,
+    component: NerdyMessages,
     defaultSize: { width: 800, height: 600 },
     color: "bg-emerald-500",
+  },
+  mail: {
+    id: "mail",
+    name: "Mail",
+    icon: "mail",
+    component: ({}) => <PlaceholderApp title="Mail" />,
+    defaultSize: { width: 900, height: 600 },
+    color: "bg-sky-500",
+  },
+  maps: {
+    id: "maps",
+    name: "Maps",
+    icon: "map",
+    component: ({}) => <PlaceholderApp title="Maps" />,
+    defaultSize: { width: 900, height: 600 },
+    color: "bg-green-500",
+  },
+  photos: {
+    id: "photos",
+    name: "Photos",
+    icon: "photo",
+    component: ({}) => <PlaceholderApp title="Photos" />,
+    defaultSize: { width: 800, height: 600 },
+    color: "bg-purple-500",
+  },
+  ide: {
+    id: "ide",
+    name: "Nerdy Studio",
+    icon: "code",
+    component: ({}) => <PlaceholderApp title="Nerdy Studio" />,
+    defaultSize: { width: 1100, height: 700 },
+    color: "bg-blue-700",
+  },
+  code_editor: {
+    id: "code_editor",
+    name: "Text Editor",
+    icon: "edit_note",
+    component: ({}) => <PlaceholderApp title="Text Editor" />,
+    defaultSize: { width: 800, height: 600 },
+    color: "bg-slate-600",
+  },
+  tasks: {
+    id: "tasks",
+    name: "Tasks",
+    icon: "check_circle",
+    component: ({}) => <PlaceholderApp title="Tasks" />,
+    defaultSize: { width: 400, height: 500 },
+    color: "bg-indigo-500",
+  },
+  pdf_reader: {
+    id: "pdf_reader",
+    name: "PDF Viewer",
+    icon: "picture_as_pdf",
+    component: ({}) => <PlaceholderApp title="PDF Viewer" />,
+    defaultSize: { width: 800, height: 900 },
+    color: "bg-red-500",
   },
 };
 

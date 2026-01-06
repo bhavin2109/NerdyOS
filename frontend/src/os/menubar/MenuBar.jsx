@@ -4,13 +4,12 @@ import useSystemStore from "../../store/systemStore";
 import useWindowStore from "../../store/windowStore";
 import { getAppById, APP_REGISTRY } from "../appRegistry";
 import ControlPanel from "./ControlPanel";
-import CalendarWidget from "./CalendarWidget";
+import NotificationCenter from "./NotificationCenter";
 
 const MenuBar = () => {
   const [date, setDate] = useState(new Date());
   const [showAppLauncher, setShowAppLauncher] = useState(false);
-  const [showControlPanel, setShowControlPanel] = useState(false);
-  const [showCalendar, setShowCalendar] = useState(false);
+  const [activePanel, setActivePanel] = useState(null);
   const [appContextMenu, setAppContextMenu] = useState(null);
 
   const {
@@ -20,8 +19,9 @@ const MenuBar = () => {
     wifi,
     battery,
     notificationsEnabled,
+    installedApps,
   } = useSystemStore();
-  const { activeWindowId, openWindow, windows, toggleMinimize, focusWindow } =
+  const { activeWindowId, openWindow, windows, toggleMinimize } =
     useWindowStore();
 
   // Resolve active app
@@ -42,15 +42,14 @@ const MenuBar = () => {
   useEffect(() => {
     const handleClick = () => {
       setShowAppLauncher(false);
-      setShowControlPanel(false);
-      setShowCalendar(false);
+      setActivePanel(null);
       setAppContextMenu(null);
     };
-    if (showAppLauncher || appContextMenu || showControlPanel || showCalendar) {
+    if (showAppLauncher || appContextMenu || activePanel) {
       window.addEventListener("click", handleClick);
       return () => window.removeEventListener("click", handleClick);
     }
-  }, [showAppLauncher, appContextMenu, showControlPanel, showCalendar]);
+  }, [showAppLauncher, appContextMenu, activePanel]);
 
   // Format: "Mon 2 Jan 3:20 PM"
   const formattedDate =
@@ -61,20 +60,24 @@ const MenuBar = () => {
     }) +
     " " +
     date.toLocaleTimeString("en-US", {
-      hour: "numeric",
       minute: "2-digit",
     });
 
-  const handleAppLaunch = (appId) => {
+  const handleAppLaunch = (e, appId) => {
+    e?.stopPropagation(); // Stop click from reaching parent togglers
+
+    // Get button element for animation origin (optional but good for zoom effect)
     const iconElement = document.getElementById(`app-launcher-${appId}`);
     const rect = iconElement?.getBoundingClientRect();
     const safeRect = rect
       ? { x: rect.left, y: rect.top, width: rect.width, height: rect.height }
       : null;
+
     openWindow(appId, safeRect);
+
+    // Explicitly close all menus
     setShowAppLauncher(false);
-    setShowControlPanel(false);
-    setShowCalendar(false);
+    setActivePanel(null);
     setAppContextMenu(null);
   };
 
@@ -93,8 +96,20 @@ const MenuBar = () => {
     setAppContextMenu(null);
   };
 
-  // Get all apps from registry
-  const allApps = Object.values(APP_REGISTRY);
+  const togglePanel = (e, panelName) => {
+    e.stopPropagation();
+    if (activePanel === panelName) {
+      setActivePanel(null);
+    } else {
+      setActivePanel(panelName);
+      setShowAppLauncher(false);
+    }
+  };
+
+  // Get all apps from registry and filter by installedApps
+  const allApps = Object.values(APP_REGISTRY).filter((app) =>
+    installedApps.includes(app.id)
+  );
 
   // Helper to check if app is disabled
   const isAppDisabled = (id) => disabledApps.includes(id);
@@ -117,6 +132,7 @@ const MenuBar = () => {
           onClick={(e) => {
             e.stopPropagation();
             setShowAppLauncher(!showAppLauncher);
+            setActivePanel(null);
           }}
         >
           {/* Custom OS Icon: Smiling Ghost Emoji */}
@@ -147,7 +163,7 @@ const MenuBar = () => {
                         whileHover={{ scale: 1.1, y: -2 }}
                         whileTap={{ scale: 0.95 }}
                         className="flex flex-col items-center gap-1 p-2 rounded-xl hover:bg-white/10 cursor-pointer transition-colors relative group"
-                        onClick={() => handleAppLaunch(app.id)}
+                        onClick={(e) => handleAppLaunch(e, app.id)}
                         onContextMenu={(e) => handleAppContextMenu(e, app.id)}
                       >
                         {/* App Icon */}
@@ -329,143 +345,141 @@ const MenuBar = () => {
           })}
         </div>
       </div>
-      {/* Right Side: Time, WiFi, Control Center, Battery, Notifications */}
+      {/* Right Side: Separate Triggers */}
       <div className="flex items-center gap-2 pr-2">
-        {/* Date & Time */}
+        {/* Date: Opens Calendar */}
         <div
-          className={`hover:bg-white/10 px-2 py-0.5 rounded cursor-pointer font-medium transition-colors relative ${
-            showCalendar ? "bg-white/10" : ""
+          className={`flex items-center hover:bg-white/10 px-2 py-0.5 rounded cursor-pointer transition-colors relative ${
+            activePanel === "calendar" ? "bg-white/10" : ""
           }`}
-          onClick={(e) => {
-            e.stopPropagation();
-            setShowCalendar(!showCalendar);
-            setShowControlPanel(false);
-            setShowAppLauncher(false);
-          }}
+          onClick={(e) => togglePanel(e, "calendar")}
         >
-          {formattedDate}
+          <span className="font-medium text-[13px]">{formattedDate}</span>
           <AnimatePresence>
-            {showCalendar && <CalendarWidget />}
-          </AnimatePresence>
-        </div>
-
-        {/* WiFi Icon */}
-        <div
-          className={`hover:bg-white/10 p-1.5 rounded cursor-default transition-opacity ${
-            wifi ? "opacity-100" : "opacity-50"
-          }`}
-          title={
-            wifi ? "Wi-Fi: Connected (Online)" : "Wi-Fi: Disconnected (Offline)"
-          }
-        >
-          <svg
-            className="w-4 h-4"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            {wifi ? (
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M8.111 16.404a5.5 5.5 0 017.778 0M12 20h.01m-7.08-7.071c3.904-3.905 10.236-3.905 14.141 0M1.394 9.393c5.857-5.857 15.355-5.857 21.213 0"
-              />
-            ) : (
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M3 3l18 18M8.111 16.404a5.5 5.5 0 017.778 0M12 20h.01m-7.08-7.071c3.904-3.905 10.236-3.905 14.141 0M1.394 9.393c5.857-5.857 15.355-5.857 21.213 0"
-                className="opacity-50"
-              />
+            {activePanel === "calendar" && (
+              <NotificationCenter mode="calendar" />
             )}
-          </svg>
-        </div>
-
-        {/* Control Center Toggle */}
-        <div
-          className={`hover:bg-white/10 p-1.5 rounded cursor-pointer transition-colors ${
-            showControlPanel ? "bg-white/10" : ""
-          } relative`}
-          onClick={(e) => {
-            e.stopPropagation();
-            setShowControlPanel(!showControlPanel);
-            setShowAppLauncher(false);
-            setShowCalendar(false);
-          }}
-        >
-          <svg
-            className="w-4 h-4"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"
-            />
-          </svg>
-          <AnimatePresence>
-            {showControlPanel && <ControlPanel />}
           </AnimatePresence>
         </div>
 
-        {/* Battery Icon */}
+        {/* Notifications: Opens Notifications Only */}
         <div
-          className="hover:bg-white/10 px-2 py-0.5 rounded cursor-default flex items-center gap-2"
-          title={`Battery: ${battery.level}% ${
-            battery.charging ? "(Charging)" : ""
+          className={`flex items-center justify-center w-8 h-8 hover:bg-white/10 rounded cursor-pointer transition-colors relative ${
+            activePanel === "notifications" ? "bg-white/10" : ""
           }`}
+          onClick={(e) => togglePanel(e, "notifications")}
+          title="Notifications"
         >
-          <span className="text-xs font-medium tabular-nums">
-            {battery.level}%
-          </span>
-          <div className="relative w-6 h-3 border border-current rounded-[2px] p-[1px] flex items-center">
-            <div className="absolute -right-1 top-1 w-0.5 h-1.5 bg-current rounded-sm" />
+          <div
+            className={`transition-opacity ${
+              !notificationsEnabled ? "opacity-50" : ""
+            }`}
+          >
+            <svg
+              className="w-4 h-4"
+              fill={notificationsEnabled ? "currentColor" : "none"}
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"
+              />
+            </svg>
+          </div>
+          <AnimatePresence>
+            {activePanel === "notifications" && (
+              <NotificationCenter mode="notifications" />
+            )}
+          </AnimatePresence>
+        </div>
+
+        {/* WiFi: Opens WiFi Detail Panel */}
+        <div
+          className={`flex items-center justify-center w-8 h-8 hover:bg-white/10 rounded cursor-pointer transition-colors relative ${
+            activePanel === "wifi" ? "bg-white/10" : ""
+          }`}
+          onClick={(e) => togglePanel(e, "wifi")}
+          title="Network"
+        >
+          <div
+            className={`transition-opacity ${
+              wifi ? "opacity-100" : "opacity-50"
+            }`}
+          >
+            <svg
+              className="w-4 h-4"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              {wifi ? (
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M8.111 16.404a5.5 5.5 0 017.778 0M12 20h.01m-7.08-7.071c3.904-3.905 10.236-3.905 14.141 0M1.394 9.393c5.857-5.857 15.355-5.857 21.213 0"
+                />
+              ) : (
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M3 3l18 18M8.111 16.404a5.5 5.5 0 017.778 0M12 20h.01m-7.08-7.071c3.904-3.905 10.236-3.905 14.141 0M1.394 9.393c5.857-5.857 15.355-5.857 21.213 0"
+                  className="opacity-50"
+                />
+              )}
+            </svg>
+          </div>
+          <AnimatePresence>
+            {activePanel === "wifi" && <ControlPanel initialView="wifi" />}
+          </AnimatePresence>
+        </div>
+
+        {/* Battery: Opens Main Control Panel */}
+        <div
+          className={`flex items-center justify-center hover:bg-white/10 px-1 py-1 rounded cursor-pointer transition-colors relative ${
+            activePanel === "battery" ? "bg-white/10" : ""
+          }`}
+          onClick={(e) => togglePanel(e, "battery")}
+          title={`Battery: ${battery.level}%`}
+        >
+          {/* Battery Body (Slightly smaller: w-7 h-3.5) */}
+          <div className="relative w-[28px] h-[14px] border border-white/40 rounded-[3px] flex items-center bg-black/30 overflow-hidden">
+            {/* Terminal Nub */}
+            <div className="absolute -right-[3px] top-1/2 -translate-y-1/2 w-[2px] h-[6px] bg-white/40 rounded-r-[1px]" />
+
+            {/* Fill Level */}
             <div
-              className={`h-full rounded-[1px] ${
-                battery.level <= 20 && !battery.charging
+              className={`absolute left-0 top-0 bottom-0 transition-all duration-500 ${
+                battery.charging
+                  ? "bg-green-400 animate-[pulse_2s_ease-in-out_infinite]"
+                  : battery.level <= 20
                   ? "bg-red-500"
-                  : "bg-current"
-              } ${battery.charging ? "animate-pulse" : ""}`}
+                  : battery.level <= 40
+                  ? "bg-yellow-400"
+                  : "bg-white"
+              }`}
               style={{ width: `${battery.level}%` }}
             />
+
+            {/* Percentage Text (Inside, Centered, Blend Mode for contrast) */}
+            <span className="absolute inset-0 flex items-center justify-center text-[9px] font-bold leading-none mix-blend-exclusion text-white z-10 pr-[1px]">
+              {battery.level}
+            </span>
+
+            {/* Charging Bolt Overlay (Optional, enhances 'Charging' clarity if blink is subtle) */}
             {battery.charging && (
-              <div className="absolute inset-0 flex items-center justify-center">
-                <svg
-                  className="w-2 h-2 text-black fill-current"
-                  viewBox="0 0 24 24"
-                >
-                  <path d="M13 2L3 14H11V22L21 10H13V2Z" />
-                </svg>
+              <div className="absolute inset-0 flex items-center justify-center z-20 mix-blend-normal">
+                {/* Using the blink as primary indicator as requested, text remains visible */}
               </div>
             )}
           </div>
-        </div>
-
-        {/* Notification Icon */}
-        <div
-          className={`hover:bg-white/10 p-1.5 rounded cursor-pointer ${
-            !notificationsEnabled ? "opacity-50" : ""
-          }`}
-          title="Notifications"
-        >
-          <svg
-            className="w-4 h-4"
-            fill={notificationsEnabled ? "currentColor" : "none"} // Filled if enabled
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"
-            />
-          </svg>
+          <AnimatePresence>
+            {activePanel === "battery" && <ControlPanel />}
+          </AnimatePresence>
         </div>
       </div>
     </div>

@@ -1,6 +1,20 @@
 import React, { useState } from "react";
 import clsx from "clsx";
 import useSystemStore from "../../store/systemStore";
+import { SettingsCard, SectionTitle } from "./components/Shared";
+
+// Pages
+import SystemPage from "./pages/SystemPage";
+import BluetoothPage from "./pages/BluetoothPage";
+import NetworkPage from "./pages/NetworkPage";
+import PersonalizationPage from "./pages/PersonalizationPage";
+import AppsPage from "./pages/AppsPage";
+import AccountsPage from "./pages/AccountsPage";
+import TimePage from "./pages/TimePage";
+import GamingPage from "./pages/GamingPage";
+import AccessibilityPage from "./pages/AccessibilityPage";
+import PrivacyPage from "./pages/PrivacyPage";
+import UpdatePage from "./pages/UpdatePage";
 
 // --- Icons (Using SVG for cleaner look) ---
 const Icons = {
@@ -65,14 +79,19 @@ const Icons = {
       <path d="M21 10.12h-6.78l2.74-2.82c-2.73-2.7-7.15-2.8-9.88-.1-2.73 2.71-2.73 7.08 0 9.79s7.15 2.71 9.88 0C18.32 15.65 19 14.08 19 12.1h2c0 1.98-.88 4.55-2.64 6.29-3.51 3.48-9.21 3.48-12.72 0-3.51-3.47-3.51-9.11 0-12.58 3.51-3.47 9.14-3.47 12.65 0l3.65-3.69H7.06v-3L21 10.12z" />
     </svg>
   ),
-  ArrowRight: () => (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-      <path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z" />
-    </svg>
-  ),
   Search: () => (
     <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
       <path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z" />
+    </svg>
+  ),
+  NetworkLarge: () => (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+      <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z" />
+    </svg>
+  ),
+  UpdateLarge: () => (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+      <path d="M21 10.12h-6.78l2.74-2.82c-2.73-2.7-7.15-2.8-9.88-.1-2.73 2.71-2.73 7.08 0 9.79s7.15 2.71 9.88 0C18.32 15.65 19 14.08 19 12.1h2c0 1.98-.88 4.55-2.64 6.29-3.51 3.48-9.21 3.48-12.72 0-3.51-3.47-3.51-9.11 0-12.58 3.51-3.47 9.14-3.47 12.65 0l3.65-3.69H7.06v-3L21 10.12z" />
     </svg>
   ),
 };
@@ -92,53 +111,6 @@ const SidebarItem = ({ icon: Icon, label, isActive, onClick }) => (
     </div>
     <span className="font-normal tracking-wide">{label}</span>
   </button>
-);
-
-const SettingsCard = ({
-  icon,
-  title,
-  subtitle,
-  action,
-  showArrow = true,
-  image,
-  large = false,
-}) => (
-  <div
-    className={clsx(
-      "bg-[#2B2B2B] hover:bg-[#323232] border border-[#353535] rounded-lg p-4 cursor-pointer transition-colors flex items-center gap-4 group h-full",
-      large ? "items-start" : "items-center"
-    )}
-  >
-    {image && (
-      <div className="w-16 h-16 rounded-md overflow-hidden bg-black shrink-0 border border-white/5">
-        <img src={image} alt="" className="w-full h-full object-cover" />
-      </div>
-    )}
-    {!image && icon && (
-      <div className="w-10 h-10 rounded-full bg-transparent flex items-center justify-center text-2xl shrink-0">
-        {icon}
-      </div>
-    )}
-
-    <div className="flex-1 min-w-0">
-      <div className="text-[15px] font-semibold text-white truncate">
-        {title}
-      </div>
-      {subtitle && (
-        <div className="text-[13px] text-[#A0A0A0] leading-tight mt-0.5">
-          {subtitle}
-        </div>
-      )}
-    </div>
-
-    {action && <div className="shrink-0">{action}</div>}
-
-    {showArrow && (
-      <div className="text-[#808080] group-hover:text-white transition-colors">
-        <Icons.ArrowRight />
-      </div>
-    )}
-  </div>
 );
 
 const HeroCard = ({ profile }) => (
@@ -169,7 +141,7 @@ const HeroCard = ({ profile }) => (
     <div className="flex flex-col justify-center pr-8 gap-3 border-l border-[#353535] pl-6 my-4">
       <div className="flex items-center gap-3">
         <div className="text-[#76B9ED]">
-          <Icons.Network />
+          <Icons.NetworkLarge />
         </div>
         <div>
           <div className="text-sm font-medium text-white">NerdyNet_5G</div>
@@ -178,7 +150,7 @@ const HeroCard = ({ profile }) => (
       </div>
       <div className="flex items-center gap-3">
         <div className="text-[#76B9ED]">
-          <Icons.Update />
+          <Icons.UpdateLarge />
         </div>
         <div>
           <div className="text-sm font-medium text-white">Windows Update</div>
@@ -191,90 +163,13 @@ const HeroCard = ({ profile }) => (
   </div>
 );
 
-// --- Pages ---
-
-const PersonalizationContent = () => {
-  const { wallpaper, setWallpaper, theme, setTheme } = useSystemStore();
-
-  const wallpapers = [
-    "https://images.unsplash.com/photo-1550684848-fac1c5b4e853?q=80&w=2070&auto=format&fit=crop",
-    "https://images.unsplash.com/photo-1579546929518-9e396f3cc809?q=80&w=2070&auto=format&fit=crop", // Gradient
-    "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=2064&auto=format&fit=crop", // Abstract
-    "https://images.unsplash.com/photo-1477346611705-65d1883cee1e?q=80&w=2070&auto=format&fit=crop", // Mountains
-    "https://images.unsplash.com/photo-1511497584788-876760111969?q=80&w=1932&auto=format&fit=crop", // Forest
-    "https://images.unsplash.com/photo-1533130061792-649d45e41255?q=80&w=2072&auto=format&fit=crop", // Nebula
-  ];
-
-  return (
-    <div className="animate-in fade-in slide-in-from-bottom-2 duration-300">
-      <h1 className="text-2xl font-semibold text-white mb-6">
-        Personalization
-      </h1>
-
-      <div className="mb-8">
-        <h3 className="text-sm font-semibold text-white mb-4">
-          Select a theme to apply
-        </h3>
-        <div className="flex gap-4">
-          {/* Light/Dark Toggle Mockups */}
-          <div
-            className={`w-32 h-20 rounded-lg border-2 cursor-pointer relative overflow-hidden ${
-              theme === "light" ? "border-cyan-400" : "border-gray-600"
-            }`}
-            onClick={() => setTheme("light")}
-          >
-            <div className="absolute inset-0 bg-gray-200 flex items-center justify-center text-black font-bold text-xs">
-              Light
-            </div>
-          </div>
-          <div
-            className={`w-32 h-20 rounded-lg border-2 cursor-pointer relative overflow-hidden ${
-              theme === "dark" ? "border-cyan-400" : "border-gray-600"
-            }`}
-            onClick={() => setTheme("dark")}
-          >
-            <div className="absolute inset-0 bg-[#1e1e1e] flex items-center justify-center text-white font-bold text-xs">
-              Dark
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div className="mb-8">
-        <h3 className="text-sm font-semibold text-white mb-4">Background</h3>
-        <div className="grid grid-cols-3 gap-4">
-          {wallpapers.map((wp, idx) => (
-            <div
-              key={idx}
-              className={`aspect-video rounded-lg overflow-hidden cursor-pointer border-2 transition-all ${
-                wallpaper === wp
-                  ? "border-cyan-400 scale-105"
-                  : "border-transparent hover:scale-105"
-              }`}
-              onClick={() => setWallpaper(wp)}
-            >
-              <img
-                src={wp}
-                alt={`Wallpaper ${idx}`}
-                className="w-full h-full object-cover"
-              />
-            </div>
-          ))}
-        </div>
-      </div>
-    </div>
-  );
-};
-
 const HomeContent = ({ profile }) => (
   <div className="animate-in fade-in slide-in-from-bottom-2 duration-300">
     <h1 className="text-2xl font-semibold text-white mb-6">Home</h1>
 
     <HeroCard profile={profile} />
 
-    <h3 className="text-[15px] font-semibold text-white mb-3">
-      Recommended settings
-    </h3>
+    <SectionTitle title="Recommended settings" />
 
     {/* Recommended Settings Card */}
     <div className="bg-[#2B2B2B] border border-[#353535] rounded-lg p-0 mb-6 overflow-hidden">
@@ -304,7 +199,11 @@ const HomeContent = ({ profile }) => (
             </div>
           </div>
         </div>
-        <Icons.ArrowRight />
+        <div className="text-[#808080]">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z" />
+          </svg>
+        </div>
       </div>
     </div>
 
@@ -314,13 +213,20 @@ const HomeContent = ({ profile }) => (
         title="Microsoft 365"
         subtitle="View benefits"
         large
+        showArrow
       />
       <SettingsCard
         icon="☁️"
         title="Cloud storage"
         subtitle="You are using 0% of your 5 GB"
+        showArrow
       />
-      <SettingsCard icon="🎮" title="Gaming" subtitle="Game Mode is On" />
+      <SettingsCard
+        icon="🎮"
+        title="Gaming"
+        subtitle="Game Mode is On"
+        showArrow
+      />
     </div>
   </div>
 );
@@ -348,6 +254,45 @@ const NerdySettings = () => {
     { id: "Privacy", icon: Icons.Privacy, label: "Privacy & security" },
     { id: "Update", icon: Icons.Update, label: "Windows Update" },
   ];
+
+  const renderContent = () => {
+    switch (activeTab) {
+      case "Home":
+        return <HomeContent profile={userProfile} />;
+      case "System":
+        return <SystemPage />;
+      case "Bluetooth":
+        return <BluetoothPage />;
+      case "Network":
+        return <NetworkPage />;
+      case "Personalization":
+        return <PersonalizationPage />;
+      case "Apps":
+        return <AppsPage />;
+      case "Accounts":
+        return <AccountsPage />;
+      case "Time":
+        return <TimePage />;
+      case "Gaming":
+        return <GamingPage />;
+      case "Accessibility":
+        return <AccessibilityPage />;
+      case "Privacy":
+        return <PrivacyPage />;
+      case "Update":
+        return <UpdatePage />;
+      default:
+        return (
+          <div className="flex flex-col items-center justify-center h-[60vh] text-[#A0A0A0]">
+            <div className="text-4xl mb-4 text-[#333]">🚧</div>
+            <h2 className="text-lg font-semibold text-white mb-2">
+              {activeTab}
+            </h2>
+            <p className="text-sm">This section is under construction.</p>
+          </div>
+        );
+    }
+  };
 
   return (
     <div className="flex h-full w-full bg-[#1F1F1F] text-white font-sans overflow-hidden select-none">
@@ -387,7 +332,7 @@ const NerdySettings = () => {
         </div>
 
         {/* Nav Items */}
-        <div className="flex-1 overflow-y-auto px-2 scrollbar-thin scrollbar-thumb-[#444] scrollbar-track-transparent">
+        <div className="flex-1 overflow-y-auto overflow-x-hidden px-2 scrollbar-thin scrollbar-thumb-[#444] scrollbar-track-transparent">
           {navItems.map((item) => (
             <SidebarItem
               key={item.id}
@@ -402,21 +347,7 @@ const NerdySettings = () => {
 
       {/* Main Content */}
       <div className="flex-1 bg-[#1C1C1C] h-full overflow-y-auto p-8 relative">
-        {/* Top Window Drag Area protection (standard window titlebar handles this, but we need spacing) */}
-
-        <div className="max-w-[1000px] mx-auto pb-10">
-          {activeTab === "Home" && <HomeContent profile={userProfile} />}
-          {activeTab === "Personalization" && <PersonalizationContent />}
-          {activeTab !== "Home" && activeTab !== "Personalization" && (
-            <div className="flex flex-col items-center justify-center h-[60vh] text-[#A0A0A0]">
-              <div className="text-4xl mb-4 text-[#333]">🚧</div>
-              <h2 className="text-lg font-semibold text-white mb-2">
-                {activeTab}
-              </h2>
-              <p className="text-sm">This section is under construction.</p>
-            </div>
-          )}
-        </div>
+        <div className="max-w-[1000px] mx-auto pb-10">{renderContent()}</div>
       </div>
     </div>
   );
