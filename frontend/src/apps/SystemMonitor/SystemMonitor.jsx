@@ -1,10 +1,29 @@
 import React, { useState, useEffect } from "react";
+import useSystemStore from "../../store/systemStore";
+import useWindowStore from "../../store/windowStore";
+
+// Graph component extracted outside to prevent recreation during renders
+const Graph = ({ data, color }) => (
+  <div className="h-32 bg-black/20 rounded border border-white/5 relative overflow-hidden flex items-end">
+    {data.map((val, i) => (
+      <div
+        key={i}
+        className={`flex-1 mx-[1px] ${color}`}
+        style={{ height: `${val}%` }}
+      />
+    ))}
+  </div>
+);
 
 const SystemMonitor = () => {
   const [cpuUi, setCpuUi] = useState([]);
   const [memUi, setMemUi] = useState([]);
+  const [uptime, setUptime] = useState({ hours: 0, minutes: 0, seconds: 0 });
 
-  // Simulate data points
+  const { bootTime } = useSystemStore();
+  const { windows } = useWindowStore();
+
+  // Simulate CPU/Memory data points (browser cannot access real metrics)
   useEffect(() => {
     const update = () => {
       setCpuUi((prev) => {
@@ -21,17 +40,29 @@ const SystemMonitor = () => {
     return () => clearInterval(idx);
   }, []);
 
-  const Graph = ({ data, color }) => (
-    <div className="h-32 bg-black/20 rounded border border-white/5 relative overflow-hidden flex items-end">
-      {data.map((val, i) => (
-        <div
-          key={i}
-          className={`flex-1 mx-[1px] ${color}`}
-          style={{ height: `${val}%` }}
-        />
-      ))}
-    </div>
-  );
+  // Calculate real uptime from bootTime
+  useEffect(() => {
+    const updateUptime = () => {
+      const elapsed = Date.now() - bootTime;
+      const totalSeconds = Math.floor(elapsed / 1000);
+      const hours = Math.floor(totalSeconds / 3600);
+      const minutes = Math.floor((totalSeconds % 3600) / 60);
+      const seconds = totalSeconds % 60;
+      setUptime({ hours, minutes, seconds });
+    };
+
+    updateUptime();
+    const interval = setInterval(updateUptime, 1000);
+    return () => clearInterval(interval);
+  }, [bootTime]);
+
+  const formatUptime = () => {
+    const pad = (n) => String(n).padStart(2, "0");
+    return `${pad(uptime.hours)}:${pad(uptime.minutes)}:${pad(uptime.seconds)}`;
+  };
+
+  // Count running windows as "processes"
+  const processCount = windows.length;
 
   return (
     <div className="flex flex-col h-full bg-[#1c1c1e] text-white p-6 gap-6">
@@ -53,12 +84,12 @@ const SystemMonitor = () => {
 
       <div className="grid grid-cols-2 gap-4 mt-auto">
         <div className="bg-white/5 p-4 rounded text-center">
-          <div className="text-gray-400 text-xs">Processes</div>
-          <div className="text-2xl font-bold">142</div>
+          <div className="text-gray-400 text-xs">Running Apps</div>
+          <div className="text-2xl font-bold">{processCount}</div>
         </div>
         <div className="bg-white/5 p-4 rounded text-center">
           <div className="text-gray-400 text-xs">Uptime</div>
-          <div className="text-xl font-bold">12:30:22</div>
+          <div className="text-xl font-bold font-mono">{formatUptime()}</div>
         </div>
       </div>
     </div>

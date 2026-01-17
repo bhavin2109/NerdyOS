@@ -3,7 +3,7 @@ import { persist } from 'zustand/middleware';
 
 const useSystemStore = create(
     persist(
-        (set, get) => ({
+        (set) => ({
             // Appearance
             theme: 'dark',
             wallpaper: 'https://images.unsplash.com/photo-1550684848-fac1c5b4e853?q=80&w=2070&auto=format&fit=crop', // Neon Blue/Pink Cyberpunk Water style
@@ -38,6 +38,7 @@ const useSystemStore = create(
             gameMode: false,
             lastUpdateCheck: new Date(),
             isFirstBoot: true,
+            bootTime: Date.now(), // Track system boot time for uptime calculation
             installedApps: [
                 'finder', 'settings', 'browser', 'notes', 'calculator', 'terminal', 'store',
                 'media', 'doc', 'calendar', 'monitor', 'messages', 'mail', 'maps',
@@ -170,11 +171,11 @@ const useSystemStore = create(
                 accentColor: state.accentColor,
                 accentMode: state.accentMode,
                 disabledApps: state.disabledApps,
-                disabledApps: state.disabledApps,
                 pinnedApps: state.pinnedApps,
                 brightness: state.brightness,
                 volume: state.volume,
                 isFirstBoot: state.isFirstBoot,
+                bootTime: state.bootTime,
                 installedApps: state.installedApps
             }),
         }

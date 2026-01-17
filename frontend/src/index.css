@@ -1,3 +1,417 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* ═══════════════════════════════════════════════════════════════════════════════
+   CATPPUCCIN MOCHA THEME TOKENS
+   ═══════════════════════════════════════════════════════════════════════════════ */
+
+:root {
+  /* Base Colors */
+  --rosewater: #f5e0dc;
+  --flamingo: #f2cdcd;
+  --pink: #f5c2e7;
+  --mauve: #cba6f7;
+  --red: #f38ba8;
+  --maroon: #eba0ac;
+  --peach: #fab387;
+  --yellow: #f9e2af;
+  --green: #a6e3a1;
+  --teal: #94e2d5;
+  --sky: #89dceb;
+  --sapphire: #74c7ec;
+  --blue: #89b4fa;
+  --lavender: #b4befe;
+
+  /* Text Colors */
+  --text: #cdd6f4;
+  --subtext-1: #bac2de;
+  --subtext-0: #a6adc8;
+
+  /* Overlay Colors */
+  --overlay-2: #9399b2;
+  --overlay-1: #7f849c;
+  --overlay-0: #6c7086;
+
+  /* Surface Colors */
+  --surface-2: #585b70;
+  --surface-1: #45475a;
+  --surface-0: #313244;
+
+  /* Background Colors */
+  --base: #1e1e2e;
+  --mantle: #181825;
+  --crust: #11111b;
+
+  /* Semantic Tokens */
+  --bg-primary: var(--base);
+  --bg-secondary: var(--surface-0);
+  --bg-elevated: var(--surface-1);
+  --text-primary: var(--text);
+  --text-muted: var(--subtext-0);
+  --border-color: var(--surface-2);
+  --accent: var(--mauve);
+  --focus: var(--blue);
+
+  /* Window Decoration */
+  --window-border-active: var(--accent);
+  --window-border-inactive: var(--surface-0);
+  --window-shadow: rgba(17, 17, 27, 0.5);
+  --window-rounding: 10px;
+  --window-gap-in: 5px;
+  --window-gap-out: 15px;
+
+  /* Bar */
+  --bar-bg: rgba(30, 30, 46, 0.9);
+  --bar-height: 32px;
+
+  /* Animation */
+  --transition-fast: 150ms;
+  --transition-normal: 200ms;
+  --transition-slow: 300ms;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════════
+   BASE STYLES
+   ═══════════════════════════════════════════════════════════════════════════════ */
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  font-family:
+    "Inter",
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    Roboto,
+    Oxygen,
+    Ubuntu,
+    Cantarell,
+    "Open Sans",
+    "Helvetica Neue",
+    sans-serif;
+  background-color: var(--base);
+  color: var(--text);
+  overflow: hidden;
+  height: 100%;
+  width: 100%;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+#root {
+  height: 100%;
+  width: 100%;
+}
+
+/* Scrollbar Styling */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--surface-0);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--surface-2);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--overlay-0);
+}
+
+/* Selection */
+::selection {
+  background-color: var(--mauve);
+  color: var(--crust);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════════
+   ANIMATION UTILITIES
+   ═══════════════════════════════════════════════════════════════════════════════ */
+
+@layer utilities {
+  .blur-sm {
+    backdrop-filter: blur(4px);
+  }
+
+  .blur-md {
+    backdrop-filter: blur(8px);
+  }
+
+  .blur-lg {
+    backdrop-filter: blur(12px);
+  }
+
+  .blur-xl {
+    backdrop-filter: blur(16px);
+  }
+
+  /* Glow effects */
+  .glow-mauve {
+    box-shadow: 0 0 20px rgba(203, 166, 247, 0.4);
+  }
+
+  .glow-blue {
+    box-shadow: 0 0 20px rgba(137, 180, 250, 0.4);
+  }
+
+  .glow-green {
+    box-shadow: 0 0 20px rgba(166, 227, 161, 0.4);
+  }
+
+  .glow-red {
+    box-shadow: 0 0 20px rgba(243, 139, 168, 0.4);
+  }
+
+  /* Glass effect */
+  .glass {
+    background: rgba(30, 30, 46, 0.7);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(69, 71, 90, 0.5);
+  }
+
+  .glass-dark {
+    background: rgba(17, 17, 27, 0.8);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(49, 50, 68, 0.5);
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════════
+   HYPRLAND-STYLE WINDOW DECORATIONS
+   ═══════════════════════════════════════════════════════════════════════════════ */
+
+.hypr-window {
+  border-radius: var(--window-rounding);
+  box-shadow: 0 8px 32px var(--window-shadow);
+  transition:
+    box-shadow var(--transition-fast) ease,
+    border-color var(--transition-fast) ease;
+}
+
+.hypr-window-active {
+  box-shadow:
+    0 0 0 2px var(--window-border-active),
+    0 8px 32px var(--window-shadow),
+    0 0 30px rgba(203, 166, 247, 0.2);
+}
+
+.hypr-window-inactive {
+  box-shadow:
+    0 0 0 2px var(--window-border-inactive),
+    0 8px 32px var(--window-shadow);
+}
+
+/* Gradient border animation for focused window */
+@keyframes border-gradient {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+.hypr-border-gradient {
+  background: linear-gradient(
+    45deg,
+    var(--mauve),
+    var(--blue),
+    var(--lavender),
+    var(--mauve)
+  );
+  background-size: 300% 300%;
+  animation: border-gradient 4s ease infinite;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════════
+   WORKSPACE TRANSITIONS
+   ═══════════════════════════════════════════════════════════════════════════════ */
+
+.workspace-slide-left-enter {
+  transform: translateX(-100%);
+  opacity: 0;
+}
+
+.workspace-slide-left-enter-active {
+  transform: translateX(0);
+  opacity: 1;
+  transition:
+    transform var(--transition-slow) ease,
+    opacity var(--transition-normal) ease;
+}
+
+.workspace-slide-right-enter {
+  transform: translateX(100%);
+  opacity: 0;
+}
+
+.workspace-slide-right-enter-active {
+  transform: translateX(0);
+  opacity: 1;
+  transition:
+    transform var(--transition-slow) ease,
+    opacity var(--transition-normal) ease;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════════
+   COMPONENT STYLES
+   ═══════════════════════════════════════════════════════════════════════════════ */
+
+/* Bar Styling */
+.hypr-bar {
+  background: var(--bar-bg);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--surface-0);
+}
+
+.hypr-bar-module {
+  display: flex;
+  align-items: center;
+  padding: 0 8px;
+  height: 100%;
+  transition: background-color var(--transition-fast) ease;
+}
+
+.hypr-bar-module:hover {
+  background-color: var(--surface-0);
+}
+
+/* Workspace Button */
+.workspace-btn {
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  transition: all var(--transition-fast) ease;
+}
+
+.workspace-btn-active {
+  background-color: var(--mauve);
+  color: var(--crust);
+}
+
+.workspace-btn-occupied {
+  background-color: var(--surface-1);
+  color: var(--text);
+}
+
+.workspace-btn-empty {
+  color: var(--overlay-0);
+}
+
+.workspace-btn-empty:hover {
+  color: var(--subtext-0);
+  background-color: var(--surface-0);
+}
+
+/* Launcher */
+.hypr-launcher {
+  background: rgba(30, 30, 46, 0.95);
+  backdrop-filter: blur(20px);
+  border: 1px solid var(--surface-1);
+  border-radius: 12px;
+  box-shadow: 0 24px 48px rgba(17, 17, 27, 0.5);
+}
+
+.hypr-launcher-input {
+  background: transparent;
+  border: none;
+  outline: none;
+  color: var(--text);
+  font-size: 18px;
+  font-weight: 300;
+}
+
+.hypr-launcher-input::placeholder {
+  color: var(--overlay-0);
+}
+
+.hypr-launcher-result {
+  padding: 12px 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background-color var(--transition-fast) ease;
+}
+
+.hypr-launcher-result:hover,
+.hypr-launcher-result-selected {
+  background-color: var(--surface-1);
+}
+
+.hypr-launcher-result-selected {
+  background-color: var(--mauve);
+  color: var(--crust);
+}
+
+/* Notification */
+.hypr-notification {
+  background: rgba(30, 30, 46, 0.95);
+  backdrop-filter: blur(12px);
+  border-radius: 12px;
+  border-left: 4px solid var(--mauve);
+  box-shadow: 0 8px 24px rgba(17, 17, 27, 0.4);
+}
+
+.hypr-notification-critical {
+  border-left-color: var(--red);
+  background: rgba(243, 139, 168, 0.1);
+}
+
+.hypr-notification-low {
+  border-left-color: var(--blue);
+}
+
+/* Power Menu */
+.power-menu-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  width: 120px;
+  height: 120px;
+  border-radius: 16px;
+  border: 2px solid transparent;
+  transition: all var(--transition-fast) ease;
+}
+
+.power-menu-btn:hover {
+  transform: scale(1.05);
+}
+
+.power-menu-btn:active {
+  transform: scale(0.95);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════════
+   FONT IMPORTS
+   ═══════════════════════════════════════════════════════════════════════════════ */
+
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&display=swap");
+
+/* Monospace font for terminal and code */
+.font-mono {
+  font-family: "JetBrains Mono", "Fira Code", monospace;
+}
