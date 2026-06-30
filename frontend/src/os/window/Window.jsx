@@ -21,10 +21,14 @@ const Window = ({
   isMinimized = false,
   snapState = null,
   launchOrigin = null, // { x, y, width, height }
+  tiledPosition = null,
+  isTiled = false,
+  isFloating = true,
   onFocus,
   onClose,
   onMinimize,
   onMaximize,
+  onFloat,
   onSnap,
 }) => {
   const [position, setPosition] = useState({ x: 100, y: 100 });
@@ -53,6 +57,7 @@ const Window = ({
   const handleTitleMouseDown = (e) => {
     if (e.button !== 0 || e.target.closest("button")) return;
     if (isFullscreen) return;
+    if (isTiled && tiledPosition) return; // Disable dragging in tiled mode
 
     e.preventDefault();
     handleFocus();
@@ -74,6 +79,7 @@ const Window = ({
   // --- Resizing ---
   const handleResizeMouseDown = (e, direction) => {
     if (isFullscreen || snapState || isMinimized) return;
+    if (isTiled && tiledPosition) return; // Disable resizing in tiled mode
     e.preventDefault();
     e.stopPropagation();
     handleFocus();
@@ -210,6 +216,15 @@ const Window = ({
     };
   }, [isDragging, isResizing, snapPreview, onSnap, detectShake]);
 
+  // Actual position and size based on tiling vs floating mode
+  const actualPosition = isTiled && tiledPosition
+    ? { x: tiledPosition.x, y: tiledPosition.y }
+    : position;
+
+  const actualSize = isTiled && tiledPosition
+    ? { width: tiledPosition.width, height: tiledPosition.height }
+    : size;
+
   // --- Animation Variants ---
 
   // Get screen dimensions for menu bar position calculation
@@ -264,12 +279,13 @@ const Window = ({
       pointerEvents: "none",
     };
   } else if (isFullscreen || snapState === "maximize") {
-    // Fullscreen/Maximized
+    // Maximize to full usable area (below MenuBar, dock auto-hides)
+    const screenH = typeof window !== "undefined" ? window.innerHeight : 1080;
     targetAnimate = {
       x: 0,
-      y: 0,
+      y: 32,
       width: "100%",
-      height: "100%",
+      height: screenH - 32,
       borderRadius: 0,
       scale: 1,
       scaleX: 1,
@@ -277,11 +293,13 @@ const Window = ({
       opacity: 1,
     };
   } else if (snapState === "left") {
+    const screenH = typeof window !== "undefined" ? window.innerHeight : 1080;
+    const screenW = typeof window !== "undefined" ? window.innerWidth : 1920;
     targetAnimate = {
       x: 0,
-      y: 0,
-      width: "50%",
-      height: "100%",
+      y: 32,
+      width: Math.floor(screenW / 2),
+      height: screenH - 32,
       borderRadius: 0,
       scale: 1,
       scaleX: 1,
@@ -289,11 +307,13 @@ const Window = ({
       opacity: 1,
     };
   } else if (snapState === "right") {
+    const screenH = typeof window !== "undefined" ? window.innerHeight : 1080;
+    const screenW = typeof window !== "undefined" ? window.innerWidth : 1920;
     targetAnimate = {
-      x: "50%",
-      y: 0,
-      width: "50%",
-      height: "100%",
+      x: Math.floor(screenW / 2),
+      y: 32,
+      width: Math.floor(screenW / 2),
+      height: screenH - 32,
       borderRadius: 0,
       scale: 1,
       scaleX: 1,
@@ -303,11 +323,11 @@ const Window = ({
   } else {
     // Normal Windowed
     targetAnimate = {
-      x: position.x,
-      y: position.y,
-      width: size.width,
-      height: size.height,
-      borderRadius: "0.5rem",
+      x: actualPosition.x,
+      y: actualPosition.y,
+      width: actualSize.width,
+      height: actualSize.height,
+      borderRadius: isTiled ? "0.75rem" : "1rem",
       scale: 1,
       scaleX: 1,
       scaleY: 1,
@@ -353,14 +373,14 @@ const Window = ({
         {/* Inner wrapper for visual styles and jelly animation - separate from positioning */}
         <div
           className={clsx(
-            "w-full h-full flex flex-col overflow-hidden transition-shadow duration-300 rounded-lg",
-            // Glass / Water Effect
-            "bg-slate-900/70 backdrop-blur-2xl backdrop-saturate-150",
-            // Neon Borders & Glow
+            "w-full h-full flex flex-col overflow-hidden transition-all duration-300 rounded-2xl",
+            // macOS Premium Glass Effect
+            "bg-slate-950/45 backdrop-blur-[35px] backdrop-saturate-150",
+            // Premium macOS Shadows & Highlights
             isActive
-              ? "shadow-[0_0_30px_rgba(6,182,212,0.3)] border border-cyan-400/50 z-10"
-              : "shadow-lg border border-white/10 z-0 opacity-90 grayscale-[30%]",
-            // Jelly/Fluid Animation on Shake - applied to inner div so it doesn't conflict with positioning
+              ? "shadow-[0_25px_60px_rgba(0,0,0,0.55)] border border-white/15 z-10"
+              : "shadow-[0_12px_30px_rgba(0,0,0,0.35)] border border-white/5 z-0 opacity-90",
+            // Jelly/Fluid Animation on Shake
             isShaking && "animate-jelly",
             className,
           )}
@@ -369,9 +389,9 @@ const Window = ({
           {/* Title Bar */}
           <div
             className={clsx(
-              "h-10 flex items-center px-4 select-none cursor-default border-b transition-colors shrink-0 relative",
+              "h-9 flex items-center px-4 select-none cursor-default border-b transition-colors shrink-0 relative",
               isActive
-                ? "bg-gradient-to-r from-cyan-500/10 to-blue-500/10 border-white/10"
+                ? "bg-slate-950/15 border-white/10"
                 : "bg-transparent border-transparent",
             )}
             onMouseDown={handleTitleMouseDown}
@@ -391,12 +411,31 @@ const Window = ({
                 className="w-3 h-3 rounded-full bg-[#28C840] border border-[#1AAB29] flex items-center justify-center transition-all hover:scale-110 active:scale-90 group-hover:after:content-['+'] after:text-[6px] after:text-black/50"
               ></button>
             </div>
-            <div className="flex-1 text-center text-sm font-medium text-cyan-50/90 pointer-events-none truncate drop-shadow-md tracking-wide">
+            <div className="flex-1 text-center text-xs font-semibold text-white/85 pointer-events-none truncate tracking-wide">
               {title}
             </div>
-            {/* Gloss overlay for water effect on titlebar */}
-            <div className="absolute inset-0 bg-gradient-to-b from-white/10 to-transparent pointer-events-none" />
-            <div className="w-14"></div>
+            <div className="flex items-center justify-end w-14 pr-1">
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onFloat?.();
+                }}
+                className="p-1 text-white/50 hover:text-cyan-400 hover:bg-white/10 rounded transition-all active:scale-90"
+                title={isFloating ? "Tile window (dock to split screen)" : "Float window (free move/resize)"}
+              >
+                {isFloating ? (
+                  // Tiling icon
+                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
+                  </svg>
+                ) : (
+                  // Floating overlaps icon
+                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                  </svg>
+                )}
+              </button>
+            </div>
           </div>
 
           {/* Content */}

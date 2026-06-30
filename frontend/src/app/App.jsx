@@ -11,7 +11,7 @@ import useSystemStore from "../store/systemStore";
 import useConfigStore from "../store/configStore";
 
 // Components
-import HyprDesktop from "../hypr/HyprDesktop";
+import Desktop from "../os/desktop/Desktop";
 
 // Memoize App to prevent unnecessary re-renders
 const App = memo(function App() {
@@ -68,8 +68,8 @@ const App = memo(function App() {
 
   return (
     <div className={`w-screen h-screen overflow-hidden font-sans ${theme}`}>
-      {/* Hyprland-style Desktop */}
-      <HyprDesktop />
+      {/* macOS-style Desktop */}
+      <Desktop />
 
       {/* Brightness Overlay */}
       <div

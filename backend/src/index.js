@@ -12,16 +12,41 @@ connectDB();
 const app = express();
 
 app.use(express.json());
-app.use(cors());
+
+// Production CORS — allow Vercel frontend and localhost dev
+const allowedOrigins = [
+    process.env.FRONTEND_URL,           // e.g. https://nerdyos.vercel.app
+    'http://localhost:5173',             // Vite dev server
+    'http://localhost:4173',             // Vite preview
+].filter(Boolean);
+
+app.use(cors({
+    origin: (origin, callback) => {
+        // Allow requests with no origin (mobile apps, curl, etc.)
+        if (!origin || allowedOrigins.includes(origin)) {
+            callback(null, true);
+        } else {
+            callback(null, true); // Allow all in initial deployment; tighten later
+        }
+    },
+    credentials: true,
+}));
 
 app.use('/api/auth', authRoutes);
 app.use('/api/files', fileRoutes);
 app.use('/api/apps', appRoutes);
 
+// Health check for Render
+app.get('/health', (req, res) => {
+    res.status(200).json({ status: 'ok', timestamp: new Date().toISOString() });
+});
+
 app.get('/', (req, res) => {
-    res.send('API is running...');
+    res.send('NerdyOS API is running...');
 });
 
 const PORT = process.env.PORT || 5000;
+const HOST = '0.0.0.0'; // Required for Render
 
-app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+app.listen(PORT, HOST, () => console.log(`Server running on ${HOST}:${PORT}`));
+

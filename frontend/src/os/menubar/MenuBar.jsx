@@ -20,6 +20,8 @@ const MenuBar = () => {
     battery,
     notificationsEnabled,
     installedApps,
+    isLaunchpadOpen,
+    setLaunchpadOpen,
   } = useSystemStore();
   const { activeWindowId, openWindow, windows, toggleMinimize } =
     useWindowStore();
@@ -73,7 +75,7 @@ const MenuBar = () => {
       ? { x: rect.left, y: rect.top, width: rect.width, height: rect.height }
       : null;
 
-    openWindow(appId, safeRect);
+    openWindow(appId, {}, safeRect);
 
     // Explicitly close all menus
     setShowAppLauncher(false);
@@ -123,226 +125,86 @@ const MenuBar = () => {
   const taskbarAppIds = [...validPinnedApps, ...runningUnpinnedApps];
 
   return (
-    <div className="fixed top-0 w-full h-10 bg-slate-900/80 backdrop-blur-md flex items-center justify-between text-cyan-50 text-sm select-none z-50 shadow-md border-b border-white/5 pr-2">
-      {/* Left Side: App Launcher + Taskbar Apps */}
-      <div className="flex items-center gap-0">
-        {/* App Launcher Icon */}
+    <div className="fixed top-0 w-full h-8 bg-slate-950/20 backdrop-blur-xl flex items-center justify-between text-cyan-50/90 text-xs select-none z-50 border-b border-white/5 pr-3 pl-3 shadow-[0_1px_10px_rgba(0,0,0,0.15)]">
+      {/* Left Side: Logo + Launchpad + App Menu */}
+      <div className="flex items-center gap-4">
+        {/* Apple/Ghost Menu */}
         <div
-          className="relative w-10 h-10 flex items-center justify-center hover:bg-white/10 cursor-pointer transition-all group"
+          className="relative flex items-center justify-center cursor-pointer hover:opacity-100 transition-opacity"
           onClick={(e) => {
             e.stopPropagation();
             setShowAppLauncher(!showAppLauncher);
             setActivePanel(null);
           }}
         >
-          {/* Custom OS Icon: Smiling Ghost Emoji */}
-          <span className="text-2xl transition-transform group-hover:scale-110 leading-none pb-1">
+          <span className="text-base select-none leading-none pb-0.5">
             👻
           </span>
-          {/* App Launcher Dropdown */}
+
+          {/* Logo Menu Dropdown */}
           <AnimatePresence>
             {showAppLauncher && (
               <motion.div
-                initial={{ opacity: 0, y: -10, scale: 0.95 }}
+                initial={{ opacity: 0, y: -5, scale: 0.95 }}
                 animate={{ opacity: 1, y: 0, scale: 1 }}
-                exit={{ opacity: 0, y: -10, scale: 0.95 }}
+                exit={{ opacity: 0, y: -5, scale: 0.95 }}
                 transition={{ duration: 0.15 }}
-                className="absolute top-full left-0 mt-2 w-80 bg-slate-900/95 backdrop-blur-2xl border border-cyan-400/30 rounded-2xl shadow-[0_20px_60px_rgba(0,0,0,0.5)] p-4 z-[100]"
+                className="absolute top-full left-[-8px] mt-2 w-52 bg-slate-900/95 backdrop-blur-2xl border border-white/10 rounded-xl shadow-2xl p-2 z-[100]"
                 onClick={(e) => e.stopPropagation()}
               >
-                <div className="text-xs text-cyan-400/70 mb-3 font-semibold tracking-wider uppercase">
-                  Applications
+                <div className="px-3 py-1.5 hover:bg-white/10 rounded-lg cursor-pointer transition-colors" onClick={() => openWindow("settings")}>
+                  About This Mac
                 </div>
-                <div className="grid grid-cols-4 gap-3">
-                  {allApps.map((app) => {
-                    const isRunning = windows.some((w) => w.id === app.id);
-                    return (
-                      <motion.div
-                        key={app.id}
-                        id={`app-launcher-${app.id}`}
-                        whileHover={{ scale: 1.1, y: -2 }}
-                        whileTap={{ scale: 0.95 }}
-                        className="flex flex-col items-center gap-1 p-2 rounded-xl hover:bg-white/10 cursor-pointer transition-colors relative group"
-                        onClick={(e) => handleAppLaunch(e, app.id)}
-                        onContextMenu={(e) => handleAppContextMenu(e, app.id)}
-                      >
-                        {/* App Icon */}
-                        <div
-                          className={`w-12 h-12 rounded-xl ${app.color} flex items-center justify-center text-white font-bold text-lg shadow-lg relative overflow-hidden`}
-                        >
-                          {/* Gloss Effect */}
-                          <div className="absolute inset-0 bg-gradient-to-br from-white/30 to-transparent pointer-events-none" />
-
-                          {/* Icon Content */}
-                          <span className="relative z-10 drop-shadow-md text-2xl">
-                            {app.icon && app.icon.length < 3 ? (
-                              app.icon
-                            ) : (
-                              <>
-                                {app.icon === "folder" && "📂"}
-                                {app.icon === "bag" && "🛍️"}
-                                {app.icon === "globe" && "🌐"}
-                                {app.icon === "message" && "💬"}
-                                {app.icon === "mail" && "✉️"}
-                                {app.icon === "map" && "🗺️"}
-                                {app.icon === "photo" && "🖼️"}
-                                {app.icon === "calendar" && "📅"}
-                                {app.icon === "note" && "📝"}
-                                {app.icon === "settings" && "⚙️"}
-                                {app.icon === "sparkles" && "✨"}
-                                {![
-                                  "folder",
-                                  "bag",
-                                  "globe",
-                                  "message",
-                                  "mail",
-                                  "map",
-                                  "photo",
-                                  "calendar",
-                                  "note",
-                                  "settings",
-                                  "sparkles",
-                                ].includes(app.icon) && app.name[0]}
-                              </>
-                            )}
-                          </span>
-                        </div>
-
-                        {/* App Name */}
-                        <span className="text-[10px] text-cyan-50/80 text-center leading-tight max-w-full truncate">
-                          {app.name}
-                        </span>
-
-                        {/* Running Indicator */}
-                        {isRunning && (
-                          <div className="absolute -top-1 -right-1 w-2 h-2 bg-cyan-400 rounded-full shadow-[0_0_8px_rgba(34,211,238,0.8)]" />
-                        )}
-                      </motion.div>
-                    );
-                  })}
+                <div className="border-t border-white/10 my-1"></div>
+                <div className="px-3 py-1.5 hover:bg-white/10 rounded-lg cursor-pointer transition-colors" onClick={() => openWindow("settings")}>
+                  System Settings...
+                </div>
+                <div className="px-3 py-1.5 hover:bg-white/10 rounded-lg cursor-pointer transition-colors" onClick={() => openWindow("store")}>
+                  App Store...
+                </div>
+                <div className="border-t border-white/10 my-1"></div>
+                <div className="px-3 py-1.5 hover:bg-[#ff453a]/20 hover:text-[#ff453a] rounded-lg cursor-pointer transition-colors font-medium" onClick={() => {
+                  if (confirm("Restart NerdyOS?")) window.location.reload();
+                }}>
+                  Restart...
+                </div>
+                <div className="px-3 py-1.5 hover:bg-[#ff453a]/25 hover:text-[#ff453a] rounded-lg cursor-pointer transition-colors font-medium" onClick={() => {
+                  if (confirm("Shut down NerdyOS?")) window.close();
+                }}>
+                  Shut Down...
                 </div>
               </motion.div>
             )}
           </AnimatePresence>
-
-          {/* App Launcher Context Menu */}
-          {appContextMenu && (
-            <div
-              className="fixed bg-slate-900/95 backdrop-blur-xl border border-cyan-400/30 shadow-2xl rounded-xl py-1 w-40 text-sm text-cyan-50 z-[150]"
-              style={{ top: appContextMenu.y, left: appContextMenu.x }}
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div
-                className="px-4 py-2 hover:bg-white/10 cursor-pointer flex items-center gap-2"
-                onClick={() => handleTogglePin(appContextMenu.appId)}
-              >
-                {pinnedApps.includes(appContextMenu.appId) ? (
-                  <>
-                    <svg
-                      className="w-4 h-4 text-cyan-400"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                      />
-                    </svg>
-                    <span>Unpin</span>
-                  </>
-                ) : (
-                  <>
-                    <svg
-                      className="w-4 h-4 text-cyan-400"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"
-                      />
-                    </svg>
-                    <span>Pin to Top Bar</span>
-                  </>
-                )}
-              </div>
-            </div>
-          )}
         </div>
 
-        {/* Taskbar Icons (Now next to launcher) */}
-        <div className="flex items-center gap-2">
-          {taskbarAppIds.map((appId) => {
-            const registryItem = APP_REGISTRY[appId];
-            if (!registryItem) return null;
+        {/* Launchpad Button */}
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            setLaunchpadOpen(!isLaunchpadOpen);
+          }}
+          className={`flex items-center justify-center p-1 rounded hover:bg-white/15 text-white/80 hover:text-white transition-all ${
+            isLaunchpadOpen ? "bg-white/15 text-white" : ""
+          }`}
+          title="Launchpad"
+        >
+          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
+          </svg>
+        </button>
 
-            const app = {
-              ...registryItem,
-              color: registryItem.color || "bg-gray-500",
-            };
-            const isOpen = windows.some((w) => w.id === appId);
-            const isActive = activeWindowId === appId;
-
-            return (
-              <div
-                key={appId}
-                className={`relative flex flex-col items-center group cursor-pointer p-1 rounded-lg transition-all ${
-                  isActive ? "bg-white/10" : "hover:bg-white/5"
-                }`}
-                onClick={() => {
-                  if (isOpen) {
-                    if (
-                      isActive &&
-                      !windows.find((w) => w.id === appId)?.isMinimized
-                    ) {
-                      toggleMinimize(appId);
-                    } else {
-                      openWindow(appId); // Brings to front if already open
-                    }
-                  } else {
-                    openWindow(appId);
-                  }
-                }}
-                onContextMenu={(e) => handleAppContextMenu(e, appId)}
-              >
-                <div
-                  className={`w-8 h-8 rounded-lg ${app.color} flex items-center justify-center text-white text-sm shadow-md overflow-hidden relative`}
-                >
-                  <div className="absolute inset-0 bg-gradient-to-br from-white/30 to-transparent pointer-events-none" />
-                  <span className="relative z-10">
-                    {app.icon && app.icon.length < 3 ? (
-                      app.icon
-                    ) : (
-                      <>
-                        {app.icon === "folder" && "📂"}
-                        {app.icon === "settings" && "⚙️"}
-                        {app.icon === "globe" && "🌐"}
-                        {app.icon === "message" && "💬"}
-                        {!["folder", "settings", "globe", "message"].includes(
-                          app.icon
-                        ) && app.name[0]}
-                      </>
-                    )}
-                  </span>
-                </div>
-
-                {/* Active/Open Dot Indicator */}
-                {isOpen && (
-                  <div
-                    className={`absolute -bottom-1 w-1 h-1 rounded-full ${
-                      isActive ? "bg-cyan-400" : "bg-white/50"
-                    }`}
-                  />
-                )}
-              </div>
-            );
-          })}
+        {/* Active App Title + Standard menus */}
+        <div className="flex items-center gap-3.5">
+          <span className="font-semibold text-white tracking-wide">
+            {activeApp ? activeApp.name : "Finder"}
+          </span>
+          <span className="opacity-30 select-none">|</span>
+          <span className="hover:text-white cursor-pointer transition-colors opacity-75 hover:opacity-100">File</span>
+          <span className="hover:text-white cursor-pointer transition-colors opacity-75 hover:opacity-100">Edit</span>
+          <span className="hover:text-white cursor-pointer transition-colors opacity-75 hover:opacity-100">View</span>
+          <span className="hover:text-white cursor-pointer transition-colors opacity-75 hover:opacity-100">Window</span>
+          <span className="hover:text-white cursor-pointer transition-colors opacity-75 hover:opacity-100">Help</span>
         </div>
       </div>
       {/* Right Side: Separate Triggers */}

@@ -1,8 +1,11 @@
 {
-  "name": "backend",
+  "name": "nerdyos-api",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "description": "NerdyOS Backend API",
+  "main": "src/index.js",
+  "engines": {
+    "node": ">=18.0.0"
+  },
   "type": "module",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",

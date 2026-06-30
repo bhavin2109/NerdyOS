@@ -1,11 +1,48 @@
-# Dependencies (just in case)
+# ══════════════════════════════════════════════
+# NerdyOS Root .gitignore
+# ══════════════════════════════════════════════
+
+# ─── Dependencies ────────────────────────────
 node_modules/
 
-# OS
-.DS_Store
-Thumbs.db
+# ─── Environment Variables ───────────────────
+.env
+.env.local
+.env.development
+.env.production
+.env.staging
+.env.*.local
 
-# Editors
+# ─── Build Output ────────────────────────────
+frontend/dist/
+frontend/dist-ssr/
+backend/dist/
+
+# ─── Logs ────────────────────────────────────
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# ─── Runtime Data ────────────────────────────
+pids/
+*.pid
+*.seed
+*.pid.lock
+
+# ─── OS Files ────────────────────────────────
+.DS_Store
+.DS_Store?
+._*
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# ─── Editors / IDEs ─────────────────────────
 .vscode/
 .idea/
 *.suo
@@ -13,3 +50,21 @@ Thumbs.db
 *.njsproj
 *.sln
 *.sw?
+*.swp
+*.swo
+*~
+
+# ─── Deployment / Hosting ───────────────────
+.vercel/
+.netlify/
+.render/
+
+# ─── Testing / Coverage ─────────────────────
+coverage/
+.nyc_output/
+
+# ─── Misc ────────────────────────────────────
+*.tsbuildinfo
+*.tgz
+.cache/
+.parcel-cache/

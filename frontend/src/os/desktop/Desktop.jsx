@@ -1,4 +1,4 @@
-import { useState, useEffect, Suspense, useCallback } from "react";
+import { useState, useEffect, Suspense, useCallback, useMemo } from "react";
 import { AnimatePresence } from "framer-motion";
 import MenuBar from "../menubar/MenuBar";
 import Spotlight from "../spotlight/Spotlight";
@@ -7,6 +7,9 @@ import useWindowStore from "../../store/windowStore";
 import useSystemStore from "../../store/systemStore";
 import { getAppById } from "../appRegistry";
 import { getFiles, createFile, seedFileSystem } from "../../services/indexedDb";
+import Dock from "./Dock";
+import AppDrawer from "./AppDrawer";
+import { calculateLayout } from "../../compositor/TilingEngine";
 
 const Desktop = () => {
   const [contextMenu, setContextMenu] = useState(null);
@@ -28,6 +31,55 @@ const Desktop = () => {
   } = useWindowStore();
 
   const { wallpaper } = useSystemStore();
+
+  // Responsive dimensions tracker for screen sizes and resolutions
+  const [dimensions, setDimensions] = useState({
+    width: typeof window !== "undefined" ? window.innerWidth : 1920,
+    height: typeof window !== "undefined" ? window.innerHeight : 1080,
+  });
+
+  useEffect(() => {
+    const handleResize = () => {
+      setDimensions({
+        width: window.innerWidth,
+        height: window.innerHeight,
+      });
+    };
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
+
+  // Determine if any non-minimized windows are visible (for dock auto-hide)
+  const hasVisibleWindows = windows.some((w) => !w.isMinimized);
+
+  // Calculate dynamic tiling layout bounds (Hyprland style dwindle)
+  // Container starts at menubar bottom and fills to screen bottom
+  // Dock auto-hides when windows are open, so no dock reservation needed
+  const tiledPositions = useMemo(() => {
+    const tiledWindows = windows.filter((w) => !w.floating && !w.isMinimized);
+
+    const menuBarHeight = 32;
+
+    const container = {
+      x: 0,
+      y: menuBarHeight,
+      width: dimensions.width,
+      height: dimensions.height - menuBarHeight,
+    };
+
+    const options = {
+      gaps_in: 6,
+      gaps_out: 8,
+      split_ratio: 0.5,
+    };
+
+    return calculateLayout("dwindle", tiledWindows, container, options);
+  }, [windows, dimensions]);
+
+  // Sync calculated positions to store for direction focus keybinds
+  useEffect(() => {
+    useWindowStore.getState().setTiledPositions(tiledPositions);
+  }, [tiledPositions]);
 
   // Load Desktop Files
   const fetchDesktopFiles = async () => {
@@ -185,6 +237,9 @@ const Desktop = () => {
       onContextMenu={handleContextMenu}
       onClick={handleClick}
     >
+      {/* Blurry wallpaper background overlay */}
+      <div className="absolute inset-0 bg-slate-950/20 backdrop-blur-[12px] pointer-events-none" style={{ zIndex: 0 }} />
+
       {/* Menu Bar */}
       <MenuBar />
 
@@ -287,8 +342,8 @@ const Desktop = () => {
         })}
       </div>
 
-      {/* Windows Layer - Below MenuBar (top-8), Above Icons */}
-      <div className="absolute top-8 left-0 right-0 bottom-0 z-10 pointer-events-none">
+      {/* Windows Layer - Full screen, tiled positions use absolute coordinates */}
+      <div className="absolute inset-0 z-10 pointer-events-none">
         <AnimatePresence>
           {windows.map((win) => {
             // Resolve component from registry
@@ -310,10 +365,14 @@ const Desktop = () => {
                   isMinimized={win.isMinimized}
                   snapState={win.snapState}
                   launchOrigin={win.launchOrigin} // Pass launch origin for animation
+                  tiledPosition={tiledPositions[win.id]}
+                  isTiled={!win.floating}
+                  isFloating={win.floating}
                   onFocus={() => focusWindow(win.id)}
                   onClose={() => closeWindow(win.id)}
                   onMinimize={() => toggleMinimize(win.id)}
                   onMaximize={() => toggleMaximize(win.id)}
+                  onFloat={() => useWindowStore.getState().toggleFloating(win.id)}
                   onSnap={(type) => setSnap(win.id, type)}
                 >
                   <Suspense
@@ -381,6 +440,12 @@ const Desktop = () => {
         isOpen={isSpotlightOpen}
         onClose={() => setIsSpotlightOpen(false)}
       />
+
+      {/* macOS Dock */}
+      <Dock autoHide={hasVisibleWindows} />
+
+      {/* macOS Launchpad (App Drawer) */}
+      <AppDrawer />
     </div>
   );
 };

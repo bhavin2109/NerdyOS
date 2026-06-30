@@ -52,7 +52,11 @@ const useSystemStore = create(
                 avatar: "https://ui-avatars.com/api/?name=Nerdy+User&background=0D8ABC&color=fff"
             },
 
+            // Launchpad App Drawer state
+            isLaunchpadOpen: false,
+
             // Actions
+            setLaunchpadOpen: (isOpen) => set({ isLaunchpadOpen: isOpen }),
             setTheme: (theme) => set({ theme }),
             setWallpaper: (wallpaper) => set((state) => {
                 let newAccent = state.accentColor;
