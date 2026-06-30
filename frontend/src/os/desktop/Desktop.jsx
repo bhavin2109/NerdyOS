@@ -238,7 +238,7 @@ const Desktop = () => {
       onClick={handleClick}
     >
       {/* Blurry wallpaper background overlay */}
-      <div className="absolute inset-0 bg-slate-950/20 backdrop-blur-[12px] pointer-events-none" style={{ zIndex: 0 }} />
+      <div className="absolute inset-0 bg-slate-950/45 md:bg-slate-950/20 backdrop-blur-sm md:backdrop-blur-[12px] pointer-events-none" style={{ zIndex: 0 }} />
 
       {/* Menu Bar */}
       <MenuBar />

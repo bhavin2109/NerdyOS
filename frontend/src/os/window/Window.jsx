@@ -140,6 +140,8 @@ const Window = ({
 
   // --- Global Mouse Listeners ---
   useEffect(() => {
+    let rafId = null;
+
     const handleMouseMove = (e) => {
       if (isDragging) {
         const deltaX = e.clientX - dragStartRef.current.x;
@@ -150,10 +152,12 @@ const Window = ({
 
         if (newY < 0) newY = 0; // Menu bar constraint
 
-        setPosition({ x: newX, y: newY });
-
-        // Detect shaking
-        detectShake(e.clientX, e.clientY);
+        // Throttled position update matching browser draw ticks
+        if (rafId) cancelAnimationFrame(rafId);
+        rafId = requestAnimationFrame(() => {
+          setPosition({ x: newX, y: newY });
+          detectShake(e.clientX, e.clientY);
+        });
 
         // Snap Regions
         const screenW = window.innerWidth;
@@ -191,8 +195,12 @@ const Window = ({
           newHeight = h;
         }
 
-        setSize({ width: newWidth, height: newHeight });
-        setPosition({ x: newX, y: newY });
+        // Throttled resize update matching browser draw ticks
+        if (rafId) cancelAnimationFrame(rafId);
+        rafId = requestAnimationFrame(() => {
+          setSize({ width: newWidth, height: newHeight });
+          setPosition({ x: newX, y: newY });
+        });
       }
     };
 
@@ -203,6 +211,7 @@ const Window = ({
       setIsDragging(false);
       setIsResizing(false);
       setSnapPreview(null);
+      if (rafId) cancelAnimationFrame(rafId);
     };
 
     if (isDragging || isResizing) {
@@ -213,6 +222,7 @@ const Window = ({
     return () => {
       window.removeEventListener("mousemove", handleMouseMove);
       window.removeEventListener("mouseup", handleMouseUp);
+      if (rafId) cancelAnimationFrame(rafId);
     };
   }, [isDragging, isResizing, snapPreview, onSnap, detectShake]);
 
@@ -374,8 +384,8 @@ const Window = ({
         <div
           className={clsx(
             "w-full h-full flex flex-col overflow-hidden transition-all duration-300 rounded-2xl",
-            // macOS Premium Glass Effect
-            "bg-slate-950/45 backdrop-blur-[35px] backdrop-saturate-150",
+            // macOS Premium Glass Effect (Optimized for mobile to prevent lag)
+            "bg-slate-950/70 md:bg-slate-950/45 backdrop-blur-[10px] md:backdrop-blur-[35px] backdrop-saturate-150",
             // Premium macOS Shadows & Highlights
             isActive
               ? "shadow-[0_25px_60px_rgba(0,0,0,0.55)] border border-white/15 z-10"
