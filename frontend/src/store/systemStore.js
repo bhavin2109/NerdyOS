@@ -36,13 +36,13 @@ const useSystemStore = create(
             // OS State
             nightLight: false,
             gameMode: false,
-            lastUpdateCheck: new Date(),
+            lastSyncCheck: new Date(),
             isFirstBoot: true,
             bootTime: Date.now(), // Track system boot time for uptime calculation
             installedApps: [
                 'finder', 'settings', 'browser', 'notes', 'calculator', 'terminal', 'store',
                 'media', 'doc', 'calendar', 'monitor', 'messages', 'mail', 'maps',
-                'photos', 'ide', 'code_editor', 'tasks', 'pdf_reader'
+                'photos', 'ide', 'code_editor', 'tasks', 'pdf_reader', 'ai'
             ], // Default installed apps
 
             // User Profile (Mock for now, normally from Auth)
@@ -107,9 +107,13 @@ const useSystemStore = create(
                     : [...state.installedApps, appId]
             })),
 
-            uninstallApp: (appId) => set((state) => ({
-                installedApps: state.installedApps.filter(id => id !== appId)
-            })),
+            uninstallApp: (appId) => set((state) => {
+                const SYSTEM_APPS = ['finder', 'settings', 'browser', 'terminal', 'store'];
+                if (SYSTEM_APPS.includes(appId)) return state;
+                return {
+                    installedApps: state.installedApps.filter(id => id !== appId)
+                };
+            }),
 
             toggleAppDisabled: (appId) => set((state) => {
                 const isDisabled = state.disabledApps.includes(appId);

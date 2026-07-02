@@ -9,19 +9,11 @@ const NotificationCenter = ({ onClose, mode = "full" }) => {
   const [notifications, setNotifications] = useState([
     {
       id: 1,
-      app: "NerdyMail",
-      title: "New Email from Boss",
-      message: "Please review the Q4 report by EOD.",
+      app: "Mail",
+      title: "New message",
+      message: "You have a new message in NerdyOS Mail.",
       time: "10:30 AM",
       icon: "✉️",
-    },
-    {
-      id: 2,
-      app: "System",
-      title: "Update Available",
-      message: "NerdyOS 2.0 is ready to install.",
-      time: "9:15 AM",
-      icon: "🔄",
     },
   ]);
 
@@ -35,7 +27,7 @@ const NotificationCenter = ({ onClose, mode = "full" }) => {
       animate={{ opacity: 1, x: 0 }}
       exit={{ opacity: 0, x: 20 }}
       transition={{ duration: 0.2, ease: "circOut" }}
-      className="absolute top-10 right-2 w-[360px] h-[85vh] max-h-[700px] bg-[#1c1c1efc] backdrop-blur-[100px] rounded-2xl p-4 text-white z-[90] select-none shadow-[0_0_20px_rgba(0,0,0,0.5)] border border-white/10 font-sans flex flex-col gap-4"
+      className="absolute top-10 right-2 w-[min(360px,92vw)] h-[85vh] max-h-[700px] bg-[#1c1c1e]/95 backdrop-blur-xl rounded-2xl p-4 text-white z-[90] select-none shadow-2xl border border-white/10 font-sans flex flex-col gap-4"
       onClick={(e) => e.stopPropagation()}
     >
       {/* Calendar Section */}

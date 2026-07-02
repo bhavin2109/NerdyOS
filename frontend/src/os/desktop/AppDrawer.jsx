@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import useSystemStore from "../../store/systemStore";
 import useWindowStore from "../../store/windowStore";
 import { APP_REGISTRY } from "../appRegistry";
+import AppIcon from "../../components/AppIcon";
 
 const AppDrawer = () => {
   const { isLaunchpadOpen, setLaunchpadOpen, installedApps } = useSystemStore();
@@ -66,13 +67,8 @@ const AppDrawer = () => {
   };
 
   const itemVariants = {
-    hidden: { opacity: 0, scale: 0.7, y: 15 },
-    show: {
-      opacity: 1,
-      scale: 1,
-      y: 0,
-      transition: { type: "spring", stiffness: 300, damping: 20 },
-    },
+    hidden: { opacity: 0, scale: 0.85 },
+    show: { opacity: 1, scale: 1, transition: { duration: 0.25, ease: [0.32, 0.72, 0, 1] } },
   };
 
   return (
@@ -83,7 +79,7 @@ const AppDrawer = () => {
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           transition={{ duration: 0.25 }}
-          className="fixed inset-0 bg-slate-950/65 backdrop-blur-[45px] z-[999] flex flex-col items-center justify-start pt-16 px-12 overflow-y-auto select-none"
+          className="fixed inset-0 bg-black/50 backdrop-blur-xl z-[999] flex flex-col items-center justify-start pt-12 sm:pt-16 px-4 sm:px-12 overflow-y-auto select-none"
           onClick={() => setLaunchpadOpen(false)}
         >
           {/* Search Box - centered like macOS */}
@@ -91,7 +87,7 @@ const AppDrawer = () => {
             initial={{ scale: 0.9, opacity: 0, y: -10 }}
             animate={{ scale: 1, opacity: 1, y: 0 }}
             exit={{ scale: 0.9, opacity: 0, y: -10 }}
-            transition={{ type: "spring", stiffness: 350, damping: 25 }}
+            transition={{ duration: 0.25, ease: [0.32, 0.72, 0, 1] }}
             className="mb-12 relative w-80 pointer-events-auto"
             onClick={(e) => e.stopPropagation()}
           >
@@ -167,38 +163,7 @@ const AppDrawer = () => {
                   <div className="absolute inset-0 bg-gradient-to-br from-white/30 to-transparent pointer-events-none" />
 
                   {/* Icon Render */}
-                  <span className="relative z-10 drop-shadow-md">
-                    {app.icon && app.icon.length < 3 ? (
-                      app.icon
-                    ) : (
-                      <>
-                        {app.icon === "folder" && "📂"}
-                        {app.icon === "settings" && "⚙️"}
-                        {app.icon === "globe" && "🌐"}
-                        {app.icon === "message" && "💬"}
-                        {app.icon === "mail" && "✉️"}
-                        {app.icon === "map" && "🗺️"}
-                        {app.icon === "photo" && "🖼️"}
-                        {app.icon === "calendar" && "📅"}
-                        {app.icon === "note" && "📝"}
-                        {app.icon === "sparkles" && "✨"}
-                        {app.icon === "picture_as_pdf" && "📄"}
-                        {app.icon === "edit_note" && "✍️"}
-                        {app.icon === "check_circle" && "✅"}
-                        {app.icon === "code" && "💻"}
-                        {app.icon === "bag" && "🛍️"}
-                        {app.icon === "monitoring" && "📊"}
-                        {app.icon === "play_circle" && "▶️"}
-                        {app.icon === "article" && "📄"}
-                        {app.icon === "forum" && "💬"}
-                        {![
-                          "folder", "settings", "globe", "message", "mail", "map", "photo",
-                          "calendar", "note", "sparkles", "picture_as_pdf", "edit_note",
-                          "check_circle", "code", "bag", "monitoring", "play_circle", "article", "forum"
-                        ].includes(app.icon) && app.name[0]}
-                      </>
-                    )}
-                  </span>
+                  <AppIcon app={app} className="relative z-10 text-3xl drop-shadow-md" />
                   
                   {/* Subtle border */}
                   <div className="absolute inset-0 border border-white/20 rounded-[18px] pointer-events-none" />

@@ -1,21 +1,38 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import useSystemStore from "../../store/systemStore";
 import useWindowStore from "../../store/windowStore";
+import useDockStore from "../../store/dockStore";
 import { APP_REGISTRY } from "../appRegistry";
+import AppIcon from "../../components/AppIcon";
 
 const Dock = ({ autoHide = false }) => {
-  const { pinnedApps, installedApps, accentColor } = useSystemStore();
+  const { pinnedApps, installedApps } = useSystemStore();
   const { windows, activeWindowId, openWindow, toggleMinimize } = useWindowStore();
+  const setIconRect = useDockStore((s) => s.setIconRect);
   
+  const iconRefs = useRef({});
   const [bouncingAppId, setBouncingAppId] = useState(null);
   const [hoveredAppId, setHoveredAppId] = useState(null);
   const [isDockHovered, setIsDockHovered] = useState(false);
 
-  // Filter apps
   const runningAppIds = windows.map((w) => w.id);
   const validPinnedApps = pinnedApps.filter((id) => installedApps.includes(id));
   const runningUnpinnedApps = runningAppIds.filter((id) => !pinnedApps.includes(id));
+
+  const updateIconRects = useCallback(() => {
+    Object.entries(iconRefs.current).forEach(([appId, el]) => {
+      if (!el) return;
+      const rect = el.getBoundingClientRect();
+      setIconRect(appId, { x: rect.left, y: rect.top, width: rect.width, height: rect.height });
+    });
+  }, [setIconRect]);
+
+  useEffect(() => {
+    updateIconRects();
+    window.addEventListener("resize", updateIconRects);
+    return () => window.removeEventListener("resize", updateIconRects);
+  }, [updateIconRects, validPinnedApps.length, runningUnpinnedApps.length]);
 
   // Dock should be visible when: not autoHide, or when hovered
   const isDockVisible = !autoHide || isDockHovered;
@@ -78,61 +95,18 @@ const Dock = ({ autoHide = false }) => {
 
         {/* App Icon Container */}
         <motion.div
-          whileHover={{
-            scale: 1.25,
-            y: -10,
-            transition: { type: "spring", stiffness: 450, damping: 12 },
-          }}
+          ref={(el) => { iconRefs.current[appId] = el; }}
+          whileHover={{ scale: 1.2, y: -8, transition: { duration: 0.2, ease: [0.32, 0.72, 0, 1] } }}
           animate={
             isBouncing
-              ? {
-                  y: [0, -18, 0, -10, 0],
-                  transition: { duration: 0.8, ease: "easeInOut", repeat: 1 },
-                }
+              ? { y: [0, -16, 0, -8, 0], transition: { duration: 0.7, ease: "easeInOut" } }
               : { y: 0 }
           }
-          className={`w-12 h-12 rounded-[14px] ${
-            app.color || "bg-blue-600"
-          } flex items-center justify-center text-white shadow-lg cursor-pointer relative overflow-hidden group select-none`}
+          className={`w-11 h-11 sm:w-12 sm:h-12 rounded-[14px] ${app.color || "bg-blue-600"} flex items-center justify-center text-white shadow-lg cursor-pointer relative overflow-hidden group select-none touch-manipulation`}
         >
-          {/* Gloss overlay */}
-          <div className="absolute inset-0 bg-gradient-to-br from-white/30 to-transparent pointer-events-none" />
-          
-          <span className="relative z-10 text-2xl drop-shadow-md select-none">
-            {app.icon && app.icon.length < 3 ? (
-              app.icon
-            ) : (
-              <>
-                {app.icon === "folder" && "📂"}
-                {app.icon === "settings" && "⚙️"}
-                {app.icon === "globe" && "🌐"}
-                {app.icon === "message" && "💬"}
-                {app.icon === "mail" && "✉️"}
-                {app.icon === "map" && "🗺️"}
-                {app.icon === "photo" && "🖼️"}
-                {app.icon === "calendar" && "📅"}
-                {app.icon === "note" && "📝"}
-                {app.icon === "sparkles" && "✨"}
-                {app.icon === "picture_as_pdf" && "📄"}
-                {app.icon === "edit_note" && "✍️"}
-                {app.icon === "check_circle" && "✅"}
-                {app.icon === "code" && "💻"}
-                {app.icon === "bag" && "🛍️"}
-                {app.icon === "monitoring" && "📊"}
-                {app.icon === "play_circle" && "▶️"}
-                {app.icon === "article" && "📄"}
-                {app.icon === "forum" && "💬"}
-                {![
-                  "folder", "settings", "globe", "message", "mail", "map", "photo",
-                  "calendar", "note", "sparkles", "picture_as_pdf", "edit_note",
-                  "check_circle", "code", "bag", "monitoring", "play_circle", "article", "forum"
-                ].includes(app.icon) && app.name[0]}
-              </>
-            )}
-          </span>
-
-          {/* Border shine on hover */}
-          <div className="absolute inset-0 border border-white/20 rounded-[14px] opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
+          <div className="absolute inset-0 bg-gradient-to-br from-white/25 to-transparent pointer-events-none" />
+          <AppIcon app={app} className="relative z-10 text-xl sm:text-2xl drop-shadow-md select-none" />
+          <div className="absolute inset-0 border border-white/15 rounded-[14px] opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
         </motion.div>
 
         {/* Active Dot Indicator */}
@@ -167,16 +141,11 @@ const Dock = ({ autoHide = false }) => {
           y: isDockVisible ? 0 : 100,
           opacity: isDockVisible ? 1 : 0,
         }}
-        transition={{
-          type: "spring",
-          stiffness: 400,
-          damping: 30,
-          mass: 0.8,
-        }}
+        transition={{ duration: 0.3, ease: [0.32, 0.72, 0, 1] }}
         onMouseEnter={() => setIsDockHovered(true)}
         onMouseLeave={() => setIsDockHovered(false)}
       >
-        <div className="bg-slate-900/35 backdrop-blur-2xl border border-white/10 shadow-[0_15px_40px_rgba(0,0,0,0.5)] px-4 py-2.5 rounded-[22px] flex items-end gap-3.5 pointer-events-auto transition-all duration-300">
+        <div className="bg-black/40 backdrop-blur-xl border border-white/10 shadow-[0_12px_32px_rgba(0,0,0,0.45)] px-3 sm:px-4 py-2 rounded-[20px] flex items-end gap-2.5 sm:gap-3.5 pointer-events-auto max-w-[95vw] overflow-x-auto">
           
           {/* Pinned apps group */}
           {validPinnedApps.map((id) => renderDockItem(id))}

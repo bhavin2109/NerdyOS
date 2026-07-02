@@ -1,12 +1,14 @@
-import { useState, useEffect, Suspense, useCallback, useMemo } from "react";
+import { useState, useEffect, Suspense, useMemo } from "react";
 import { AnimatePresence } from "framer-motion";
 import MenuBar from "../menubar/MenuBar";
 import Spotlight from "../spotlight/Spotlight";
 import Window from "../window/Window";
 import useWindowStore from "../../store/windowStore";
 import useSystemStore from "../../store/systemStore";
+import useDockStore from "../../store/dockStore";
 import { getAppById } from "../appRegistry";
-import { getFiles, createFile, seedFileSystem } from "../../services/indexedDb";
+import fs from "../../services/fileSystem";
+import { getDesktopPosition, setDesktopPosition } from "../../services/desktopPositions";
 import Dock from "./Dock";
 import AppDrawer from "./AppDrawer";
 import { calculateLayout } from "../../compositor/TilingEngine";
@@ -31,8 +33,7 @@ const Desktop = () => {
   } = useWindowStore();
 
   const { wallpaper } = useSystemStore();
-
-  // Responsive dimensions tracker for screen sizes and resolutions
+  const iconRects = useDockStore((s) => s.iconRects);
   const [dimensions, setDimensions] = useState({
     width: typeof window !== "undefined" ? window.innerWidth : 1920,
     height: typeof window !== "undefined" ? window.innerHeight : 1080,
@@ -84,8 +85,8 @@ const Desktop = () => {
   // Load Desktop Files
   const fetchDesktopFiles = async () => {
     try {
-      await seedFileSystem();
-      const files = await getFiles("desktop"); // 'desktop' folder
+      await fs.ready();
+      const files = await fs.ls("/home/desktop");
       setDesktopFiles(files || []);
     } catch (err) {
       console.error("Failed to load desktop files", err);
@@ -99,7 +100,7 @@ const Desktop = () => {
   // Cmd+K / Cmd+Space Listener
   useEffect(() => {
     const handleKeyDown = (e) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === "k") {
+      if ((e.metaKey || e.ctrlKey) && (e.key === "k" || e.key === " ")) {
         e.preventDefault();
         setIsSpotlightOpen((prev) => !prev);
       }
@@ -150,27 +151,18 @@ const Desktop = () => {
   const handleCreateFolder = async () => {
     setContextMenu(null);
 
-    // Windows-style: Ask for name first
     const name = prompt("Enter folder name:", "New Folder");
     if (!name || name.trim() === "") return;
 
     let folderName = name.trim();
     let counter = 1;
-
-    // Check if name exists and auto-increment
     while (desktopFiles.some((file) => file.name === folderName)) {
       counter++;
       folderName = `${name.trim()} (${counter})`;
     }
 
     try {
-      await createFile({
-        parentId: "desktop",
-        name: folderName,
-        type: "folder",
-        position: { x: 20, y: 20 }, // Default position
-      });
-
+      await fs.mkdir(`/home/desktop/${folderName}`);
       await fetchDesktopFiles();
     } catch (err) {
       console.error("Failed to create folder", err);
@@ -182,8 +174,8 @@ const Desktop = () => {
     if (!confirm("Are you sure you want to delete this item?")) return;
 
     try {
-      const { deleteFile } = await import("../../services/indexedDb");
-      await deleteFile(fileId);
+      await fs.rm(contextMenu.file.path);
+      setDesktopPosition(contextMenu.file.path, null);
       await fetchDesktopFiles();
       setSelectedFileId(null);
     } catch (err) {
@@ -193,33 +185,35 @@ const Desktop = () => {
 
   const handleStartRename = (file) => {
     setContextMenu(null);
-    setRenamingFileId(file.id);
+    setRenamingFileId(file.path);
     setRenamingValue(file.name);
-    setSelectedFileId(file.id);
+    setSelectedFileId(file.path);
   };
 
   const handleFileDoubleClick = (file) => {
-    if (file.type === "folder") {
-      // In a real OS, this opens Finder at this path
-      // For now, let's open Finder
-      openWindow("finder");
+    if (file.type === "directory") {
+      openWindow("finder", { initialPath: file.path });
+    } else if (file.name.endsWith(".txt") || file.name.endsWith(".md")) {
+      openWindow("doc", { filePath: file.path });
+    } else if (/\.(jpg|jpeg|png|gif|webp|svg)$/i.test(file.name)) {
+      openWindow("photos", { initialPath: "/home/desktop" });
     } else {
-      // Open file?
-      alert(`Opening ${file.name}...`);
+      openWindow("code_editor", { filePath: file.path });
     }
   };
 
-  const handleRenameComplete = async (fileId, newName) => {
+  const handleRenameComplete = async (filePath, newName) => {
     if (!newName || newName.trim() === "") {
-      // If empty, keep original name
       setRenamingFileId(null);
       setRenamingValue("");
       return;
     }
 
     try {
-      const { updateFile } = await import("../../services/indexedDb");
-      await updateFile(fileId, { name: newName.trim() });
+      const newPath = filePath.replace(/[^/]+$/, newName.trim());
+      await fs.rename(filePath, newPath);
+      const pos = getDesktopPosition(filePath);
+      setDesktopPosition(newPath, pos);
       await fetchDesktopFiles();
       setRenamingFileId(null);
       setRenamingValue("");
@@ -237,22 +231,22 @@ const Desktop = () => {
       onContextMenu={handleContextMenu}
       onClick={handleClick}
     >
-      {/* Blurry wallpaper background overlay */}
-      <div className="absolute inset-0 bg-slate-950/45 md:bg-slate-950/20 backdrop-blur-sm md:backdrop-blur-[12px] pointer-events-none" style={{ zIndex: 0 }} />
+      {/* Lightweight wallpaper overlay — no blur on mobile for performance */}
+      <div className="absolute inset-0 bg-slate-950/40 md:bg-slate-950/15 pointer-events-none" style={{ zIndex: 0 }} />
 
       {/* Menu Bar */}
       <MenuBar />
 
       {/* Desktop Icons Area */}
       <div className="absolute top-8 left-0 bottom-0 right-0 z-0 pointer-events-none">
-        {desktopFiles.map((file) => {
-          const position = file.position || { x: 20, y: 20 };
+        {desktopFiles.map((file, index) => {
+          const position = getDesktopPosition(file.path, index);
 
           return (
             <div
-              key={file.id}
-              className={`absolute flex flex-col items-center gap-1 group w-20 pointer-events-auto cursor-move p-2 rounded ${
-                selectedFileId === file.id
+              key={file.path}
+              className={`absolute flex flex-col items-center gap-1 group w-20 pointer-events-auto cursor-move p-2 rounded-lg ${
+                selectedFileId === file.path
                   ? "bg-white/20 border border-white/30"
                   : "hover:bg-white/10"
               }`}
@@ -263,72 +257,54 @@ const Desktop = () => {
               draggable
               onDragStart={(e) => {
                 e.dataTransfer.effectAllowed = "move";
-                e.dataTransfer.setData("fileId", file.id);
-                setSelectedFileId(file.id);
+                setSelectedFileId(file.path);
               }}
-              onDragEnd={async (e) => {
-                const rect = e.currentTarget.getBoundingClientRect();
-                const newX = e.clientX - rect.width / 2;
-                const newY = e.clientY - rect.height / 2 - 32; // Adjust for menu bar
-
-                try {
-                  const { updateFile } = await import(
-                    "../../services/indexedDb"
-                  );
-                  await updateFile(file.id, {
-                    position: {
-                      x: Math.max(0, newX),
-                      y: Math.max(0, newY),
-                    },
-                  });
-                  await fetchDesktopFiles();
-                } catch (err) {
-                  console.error("Failed to update position", err);
-                }
+              onDragEnd={(e) => {
+                const newX = Math.max(0, e.clientX - 40);
+                const newY = Math.max(0, e.clientY - 56);
+                setDesktopPosition(file.path, { x: newX, y: newY });
+                fetchDesktopFiles();
               }}
               onClick={(e) => {
                 e.stopPropagation();
-                setSelectedFileId(file.id);
+                setSelectedFileId(file.path);
               }}
               onDoubleClick={(e) => {
                 e.stopPropagation();
-                if (renamingFileId !== file.id) {
+                if (renamingFileId !== file.path) {
                   handleFileDoubleClick(file);
                 }
               }}
               onContextMenu={(e) => {
                 e.preventDefault();
                 e.stopPropagation();
-                setSelectedFileId(file.id);
+                setSelectedFileId(file.path);
                 setContextMenu({
                   x: e.clientX,
                   y: e.clientY,
-                  fileId: file.id,
-                  file: file,
+                  file,
                 });
               }}
             >
               <div className="text-4xl shadow-sm drop-shadow-md pointer-events-none">
-                {file.type === "folder" ? "📁" : "📄"}
+                {file.type === "directory" ? "📁" : "📄"}
               </div>
 
-              {/* Inline Rename Input */}
-              {renamingFileId === file.id ? (
+              {renamingFileId === file.path ? (
                 <input
                   type="text"
                   value={renamingValue}
                   onChange={(e) => setRenamingValue(e.target.value)}
-                  onBlur={() => handleRenameComplete(file.id, renamingValue)}
+                  onBlur={() => handleRenameComplete(file.path, renamingValue)}
                   onKeyDown={(e) => {
-                    if (e.key === "Enter") {
-                      handleRenameComplete(file.id, renamingValue);
-                    } else if (e.key === "Escape") {
+                    if (e.key === "Enter") handleRenameComplete(file.path, renamingValue);
+                    else if (e.key === "Escape") {
                       setRenamingFileId(null);
                       setRenamingValue("");
                     }
                   }}
                   autoFocus
-                  className="text-xs text-center font-medium bg-white/90 text-gray-900 rounded px-1 py-0.5 w-full outline-none focus:ring-2 focus:ring-cyan-400"
+                  className="text-xs text-center font-medium bg-white/90 text-gray-900 rounded px-1 py-0.5 w-full outline-none focus:ring-2 focus:ring-blue-400"
                   onClick={(e) => e.stopPropagation()}
                   onMouseDown={(e) => e.stopPropagation()}
                 />
@@ -364,7 +340,8 @@ const Desktop = () => {
                   isFullscreen={win.isFullscreen}
                   isMinimized={win.isMinimized}
                   snapState={win.snapState}
-                  launchOrigin={win.launchOrigin} // Pass launch origin for animation
+                  minimizeTarget={iconRects[win.appId]}
+                  launchOrigin={win.launchOrigin}
                   tiledPosition={tiledPositions[win.id]}
                   isTiled={!win.floating}
                   isFloating={win.floating}
@@ -382,7 +359,7 @@ const Desktop = () => {
                       </div>
                     }
                   >
-                    <AppComponent {...win.props} />
+                    <AppComponent appId={win.appId} {...win.props} />
                   </Suspense>
                 </Window>
               </div>
@@ -398,24 +375,22 @@ const Desktop = () => {
           style={{ top: contextMenu.y, left: contextMenu.x }}
           onClick={(e) => e.stopPropagation()}
         >
-          {contextMenu.fileId ? (
-            // File-specific menu
+          {contextMenu.file ? (
             <>
               <div
-                className="px-4 py-2 hover:bg-cyan-500/20 cursor-pointer transition-colors"
+                className="px-4 py-2 hover:bg-white/10 cursor-pointer transition-colors"
                 onClick={() => handleStartRename(contextMenu.file)}
               >
                 Rename
               </div>
               <div
-                className="px-4 py-2 hover:bg-cyan-500/20 cursor-pointer transition-colors text-red-400"
-                onClick={() => handleDeleteFile(contextMenu.fileId)}
+                className="px-4 py-2 hover:bg-white/10 cursor-pointer transition-colors text-red-400"
+                onClick={() => handleDeleteFile(contextMenu.file.path)}
               >
                 Delete
               </div>
             </>
           ) : (
-            // Desktop menu
             <>
               <div
                 className="px-4 py-2 hover:bg-cyan-500/20 cursor-pointer transition-colors"

@@ -4,11 +4,23 @@
  */
 
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
+import { persist, createJSONStorage } from 'zustand/middleware';
 import { getAppById } from '../os/appRegistry';
 import useNotificationStore from './notificationStore';
 import useWorkspaceStore from './workspaceStore';
 import { getWindowInDirection, swapWindows } from '../compositor/TilingEngine';
+
+const debouncedStorage = {
+    getItem: (name) => localStorage.getItem(name),
+    setItem: (() => {
+        let timer = null;
+        return (name, value) => {
+            clearTimeout(timer);
+            timer = setTimeout(() => localStorage.setItem(name, value), 300);
+        };
+    })(),
+    removeItem: (name) => localStorage.removeItem(name),
+};
 
 const useWindowStore = create(
     persist(
@@ -90,7 +102,7 @@ const useWindowStore = create(
 
                 // Check window rules for this app
                 const configStore = window.__configStore;
-                let floating = false;
+                let floating = true;
                 let targetWorkspace = currentWorkspace;
                 let initialSize = appConfig.defaultSize || { width: 800, height: 600 };
 
@@ -141,13 +153,6 @@ const useWindowStore = create(
                     workspaceStore.switchTo(targetWorkspace);
                 }
 
-                // Notification
-                useNotificationStore.getState().addNotification({
-                    title: 'App Launched',
-                    message: `Opened ${appConfig.name}`,
-                    urgency: 'low',
-                    timeout: 3000,
-                });
             },
 
             /**
@@ -380,26 +385,23 @@ const useWindowStore = create(
         }),
         {
             name: 'nerdyos-windows',
-            version: 2,
+            storage: createJSONStorage(() => debouncedStorage),
+            version: 3,
             partialize: (state) => ({
                 windows: state.windows,
                 activeWindowId: state.activeWindowId,
             }),
             migrate: (persistedState, version) => {
-                if (version < 2) {
-                    // Migrate old windows to include new properties
-                    const windows = (persistedState.windows || []).map((w) => ({
-                        ...w,
-                        floating: w.floating ?? false,
-                        isPseudo: w.isPseudo ?? false,
-                        isPinned: w.isPinned ?? false,
-                        workspace: w.workspace ?? 1,
-                        floatingPosition: w.floatingPosition ?? null,
-                        floatingSize: w.floatingSize ?? null,
-                    }));
-                    return { ...persistedState, windows };
-                }
-                return persistedState;
+                const windows = (persistedState.windows || []).map((w) => ({
+                    ...w,
+                    floating: version < 3 ? true : (w.floating ?? true),
+                    isPseudo: w.isPseudo ?? false,
+                    isPinned: w.isPinned ?? false,
+                    workspace: w.workspace ?? 1,
+                    floatingPosition: w.floatingPosition ?? null,
+                    floatingSize: w.floatingSize ?? null,
+                }));
+                return { ...persistedState, windows };
             },
         }
     )

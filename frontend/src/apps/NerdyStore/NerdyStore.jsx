@@ -4,13 +4,15 @@ import useSystemStore from "../../store/systemStore";
 import useWindowStore from "../../store/windowStore";
 import { APP_REGISTRY } from "../../os/appRegistry";
 import { CATEGORIES, STORE_dATA } from "./storeData";
+import AppIcon from "../../components/AppIcon";
+import clsx from "clsx";
 
 const NerdyStore = () => {
   const { installedApps, installApp, uninstallApp } = useSystemStore();
-  const { openWindow, windows, toggleMinimize } = useWindowStore();
+  const { openWindow, windows } = useWindowStore();
   const [activeCategory, setActiveCategory] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedAppId, setSelectedAppId] = useState(null); // For detailed view (future enhancement)
+  const [downloadProgress, setDownloadProgress] = useState({});
 
   // Filter apps based on category and search
   const filteredApps = useMemo(() => {
@@ -39,60 +41,322 @@ const NerdyStore = () => {
     if (!isOpen) {
       openWindow(appId);
     } else {
-      // Ideally bring to front, but openWindow handles logic to focus usually
-      // or we just do nothing if already open, maybe shake window?
-      // For now, openWindow is safe.
       openWindow(appId);
     }
   };
 
-  return (
-    <div className="flex h-full w-full bg-[#FAFAFA] text-slate-800 font-sans select-none overflow-hidden rounded-b-lg">
-      {/* Sidebar - Categories */}
-      <div className="w-[200px] bg-[#F0F0F0] border-r border-[#DEDEDE] flex flex-col pt-4 pb-2 shrink-0">
-        <div className="px-4 mb-4">
-          <h2 className="text-sm font-bold text-slate-500 uppercase tracking-wider">
-            Explore
-          </h2>
+  const handleInstall = (appId) => {
+    if (downloadProgress[appId] !== undefined) return;
+
+    // Simulate downloading & installing progress
+    setDownloadProgress((prev) => ({ ...prev, [appId]: 0 }));
+
+    let current = 0;
+    const interval = setInterval(() => {
+      current += 10;
+      if (current >= 100) {
+        clearInterval(interval);
+        installApp(appId);
+        setDownloadProgress((prev) => {
+          const next = { ...prev };
+          delete next[appId];
+          return next;
+        });
+      } else {
+        setDownloadProgress((prev) => ({ ...prev, [appId]: current }));
+      }
+    }, 150);
+  };
+
+  const renderAppGrid = (appsList) => (
+    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+      {appsList.map((appData) => {
+        const registryItem = APP_REGISTRY[appData.id];
+        const isInstalled = installedApps.includes(appData.id);
+        const progress = downloadProgress[appData.id];
+        const isDownloading = progress !== undefined;
+
+        return (
+          <motion.div
+            layout
+            key={appData.id}
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.95 }}
+            transition={{ duration: 0.2 }}
+            onClick={() => {
+              if (!isDownloading) {
+                if (isInstalled) {
+                  handleOpenApp(appData.id);
+                } else {
+                  handleInstall(appData.id);
+                }
+              }
+            }}
+            className="bg-[#FAF9F8]/60 border border-[#EDEBE9] rounded-2xl p-5 flex gap-4 hover:border-blue-500/30 hover:bg-white hover:shadow-[0_8px_24px_rgba(0,0,0,0.04)] transition-all duration-200 group cursor-pointer hover:scale-[1.01] active:scale-[0.99]"
+          >
+            {/* Icon container */}
+            <div className="w-16 h-16 rounded-[18px] bg-white border border-[#EDEBE9] shadow-sm flex items-center justify-center relative overflow-hidden shrink-0">
+              <div className="absolute inset-0 bg-gradient-to-br from-white/15 to-transparent pointer-events-none" />
+              <AppIcon app={registryItem} className="w-11 h-11 object-contain relative z-10" />
+            </div>
+
+            {/* Info */}
+            <div className="flex flex-col flex-1 min-w-0">
+              <div className="flex justify-between items-start">
+                <h3
+                  className="font-bold text-slate-800 truncate pr-2 text-sm tracking-tight"
+                  title={appData.name}
+                >
+                  {appData.name}
+                </h3>
+                <div className="flex items-center text-[10px] font-bold text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded-md">
+                  <span className="material-symbols-outlined text-[10px] mr-0.5 text-yellow-500 fill-current">
+                    star
+                  </span>
+                  {appData.rating}
+                </div>
+              </div>
+              <p className="text-[11px] text-slate-500 line-clamp-2 mt-1 mb-4 leading-relaxed font-medium">
+                {appData.description}
+              </p>
+
+              <div className="mt-auto flex items-center justify-between">
+                <span className="text-[10px] text-slate-400 font-bold">
+                  {appData.size}
+                </span>
+
+                {/* Action Button */}
+                <div className="flex gap-2 items-center">
+                  {isInstalled ? (
+                    <>
+                      {!['finder', 'settings', 'browser', 'terminal', 'store'].includes(appData.id) && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            uninstallApp(appData.id);
+                          }}
+                          className="px-3 py-1.5 rounded-lg text-xs font-semibold text-red-500 bg-red-50 hover:bg-red-100 active:scale-95 transition-all"
+                        >
+                          Uninstall
+                        </button>
+                      )}
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleOpenApp(appData.id);
+                        }}
+                        className="px-4 py-1.5 rounded-lg text-xs font-bold text-white bg-blue-500 hover:bg-blue-600 active:scale-95 transition-all shadow-sm"
+                      >
+                        Open
+                      </button>
+                    </>
+                  ) : isDownloading ? (
+                    <div className="flex flex-col items-end gap-1 select-none" onClick={(e) => e.stopPropagation()}>
+                      <span className="text-[9px] text-blue-600 font-bold animate-pulse tracking-wide">Installing...</span>
+                      <div className="w-20 bg-slate-100 h-1.5 rounded-full overflow-hidden border border-slate-200/50">
+                        <div
+                          className="bg-blue-600 h-full transition-all duration-150"
+                          style={{ width: `${progress}%` }}
+                        />
+                      </div>
+                    </div>
+                  ) : (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleInstall(appData.id);
+                      }}
+                      className="px-4 py-1.5 rounded-lg text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 active:scale-95 transition-all shadow-sm"
+                    >
+                      Install
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
+          </motion.div>
+        );
+      })}
+    </div>
+  );
+
+  const renderContent = () => {
+    // If a search query is entered, just show matching apps in a single grid
+    if (searchQuery.trim() !== "") {
+      return renderAppGrid(filteredApps);
+    }
+
+    // If activeCategory is not "all", show the filtered grid for that category
+    if (activeCategory !== "all") {
+      return renderAppGrid(filteredApps);
+    }
+
+    // Retrieve featured app details
+    const featuredAppId = "vscode";
+    const featuredAppData = STORE_dATA.find((app) => app.id === featuredAppId);
+    const featuredRegistryItem = APP_REGISTRY[featuredAppId];
+    const isFeaturedInstalled = installedApps.includes(featuredAppId);
+    const featuredProgress = downloadProgress[featuredAppId];
+    const isFeaturedDownloading = featuredProgress !== undefined;
+
+    // Otherwise, render category-wise sections (Explore view)
+    return (
+      <div className="space-y-10">
+        {/* Explore Banner */}
+        <div
+          className="rounded-3xl bg-gradient-to-r from-slate-900 via-blue-950 to-indigo-950 p-8 text-white shadow-xl relative overflow-hidden group hover:shadow-2xl transition-all duration-300 border border-blue-500/20"
+        >
+          <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/5 to-white/10 opacity-40 pointer-events-none" />
+
+          <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
+            <div className="max-w-xl">
+              <span className="text-[10px] font-extrabold tracking-widest text-blue-400 bg-blue-500/10 border border-blue-500/20 px-2.5 py-1 rounded-full uppercase mb-4 inline-block select-none">
+                Featured App of the Day
+              </span>
+              <h2 className="text-2xl font-black mb-2 tracking-tight text-white flex items-center gap-3">
+                {featuredAppData?.name}
+              </h2>
+              <p className="text-slate-300 text-xs font-semibold mb-6 leading-relaxed">
+                {featuredAppData?.description}
+              </p>
+              
+              <div className="flex gap-3 items-center">
+                {isFeaturedInstalled ? (
+                  <>
+                    <button
+                      onClick={() => handleOpenApp(featuredAppId)}
+                      className="bg-white text-slate-900 px-6 py-2 rounded-full font-bold text-xs hover:bg-slate-100 active:scale-95 transition-all shadow-md"
+                    >
+                      Open Application
+                    </button>
+                    <button
+                      onClick={() => uninstallApp(featuredAppId)}
+                      className="bg-red-500/20 text-red-400 border border-red-500/30 px-4 py-2 rounded-full font-bold text-xs hover:bg-red-500/30 active:scale-95 transition-all"
+                    >
+                      Uninstall
+                    </button>
+                  </>
+                ) : isFeaturedDownloading ? (
+                  <div className="flex items-center gap-3 select-none">
+                    <span className="text-xs text-blue-400 font-bold animate-pulse">Installing VS Code ({featuredProgress}%)</span>
+                    <div className="w-32 bg-white/10 h-2 rounded-full overflow-hidden border border-white/5">
+                      <div
+                        className="bg-blue-500 h-full transition-all duration-150"
+                        style={{ width: `${featuredProgress}%` }}
+                      />
+                    </div>
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => handleInstall(featuredAppId)}
+                    className="bg-blue-600 text-white px-6 py-2.5 rounded-full font-bold text-xs hover:bg-blue-500 active:scale-95 transition-all shadow-md shadow-blue-600/20 border border-blue-500/30"
+                  >
+                    Get VS Code Web
+                  </button>
+                )}
+              </div>
+            </div>
+
+            <div className="w-24 h-24 rounded-3xl bg-white/5 border border-white/10 backdrop-blur-md flex items-center justify-center relative overflow-hidden shrink-0 shadow-2xl group-hover:scale-105 group-hover:rotate-3 transition-all duration-500 mx-auto md:mx-0">
+              <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent pointer-events-none" />
+              <AppIcon app={featuredRegistryItem} className="w-16 h-16 object-contain relative z-10" />
+            </div>
+          </div>
         </div>
-        <div className="flex-1 overflow-y-auto px-2 space-y-1">
+
+        {/* Section 1: Development */}
+        <div>
+          <div className="flex flex-col mb-4">
+            <h2 className="text-lg font-bold text-slate-800 tracking-tight">Developer Tools</h2>
+            <p className="text-[10px] text-slate-400 font-bold tracking-wider uppercase">Coding, compilers & shells</p>
+          </div>
+          {renderAppGrid(STORE_dATA.filter(app => app.category === "development"))}
+        </div>
+
+        {/* Section 2: Productivity */}
+        <div>
+          <div className="flex flex-col mb-4">
+            <h2 className="text-lg font-bold text-slate-800 tracking-tight">Productivity</h2>
+            <p className="text-[10px] text-slate-400 font-bold tracking-wider uppercase">Work smarter, stay connected</p>
+          </div>
+          {renderAppGrid(STORE_dATA.filter(app => app.category === "productivity"))}
+        </div>
+
+        {/* Section 3: Gaming */}
+        <div>
+          <div className="flex flex-col mb-4">
+            <h2 className="text-lg font-bold text-slate-800 tracking-tight">Gaming & Media</h2>
+            <p className="text-[10px] text-slate-400 font-bold tracking-wider uppercase">Interactive games, videos & audio</p>
+          </div>
+          {renderAppGrid(STORE_dATA.filter(app => app.category === "gaming"))}
+        </div>
+
+        {/* Section 4: Default Apps */}
+        <div>
+          <div className="flex flex-col mb-4">
+            <h2 className="text-lg font-bold text-slate-800 tracking-tight">Default Apps</h2>
+            <p className="text-[10px] text-slate-400 font-bold tracking-wider uppercase">Core system utilities</p>
+          </div>
+          {renderAppGrid(STORE_dATA.filter(app => app.category === "system"))}
+        </div>
+      </div>
+    );
+  };
+
+  return (
+    <div className="flex h-full w-full bg-[#FAF9F8] text-slate-800 font-sans select-none overflow-hidden rounded-b-lg">
+      {/* Sidebar - Categories */}
+      <div className="w-[200px] bg-[#F3F2F1] border-r border-[#EDEBE9] flex flex-col pt-6 pb-4 shrink-0">
+        {/* App Store Emblem & Header */}
+        <div className="flex items-center gap-3 px-5 mb-6 shrink-0">
+          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white text-base shadow-md shadow-blue-500/10 select-none">
+            🛍️
+          </div>
+          <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">
+            App Store
+          </span>
+        </div>
+
+        <div className="flex-1 overflow-y-auto px-3 space-y-1">
           {CATEGORIES.map((cat) => (
             <button
               key={cat.id}
               onClick={() => setActiveCategory(cat.id)}
-              className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+              className={clsx(
+                "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold transition-all duration-150",
                 activeCategory === cat.id
-                  ? "bg-[#D6D6D6] text-slate-900"
-                  : "text-slate-600 hover:bg-[#E6E6E6]"
-              }`}
+                  ? "bg-[#EDEBE9] text-slate-900 shadow-sm"
+                  : "text-slate-600 hover:bg-[#EAEAEA] hover:text-slate-900"
+              )}
             >
-              <span className="material-symbols-outlined text-[20px]">
+              <span className="material-symbols-outlined text-[18px] opacity-85">
                 {cat.icon}
               </span>
-              {cat.label}
+              <span>{cat.label}</span>
             </button>
           ))}
         </div>
 
         {/* Bottom Status */}
-        <div className="p-4 border-t border-[#DEDEDE] text-xs text-slate-400 text-center">
-          NerdyOS Software
+        <div className="px-5 pt-4 border-t border-[#EDEBE9] text-[10px] text-slate-400 font-bold uppercase tracking-wider">
+          v1.0 • NerdyOS
         </div>
       </div>
 
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col h-full bg-white relative">
         {/* Header / Search */}
-        <div className="h-16 border-b border-[#F0F0F0] flex items-center justify-between px-6 bg-white z-10 sticky top-0">
-          <h1 className="text-xl font-bold text-slate-800 hidden md:block">
+        <div className="h-16 border-b border-[#F3F2F1] flex items-center justify-between px-8 bg-white z-10 sticky top-0">
+          <h1 className="text-xl font-extrabold text-slate-800 tracking-tight">
             {activeCategory === "all"
-              ? "All Software"
+              ? "Explore"
               : CATEGORIES.find((c) => c.id === activeCategory)?.label}
           </h1>
 
           {/* Search Bar */}
           <div className="relative w-full md:w-80 group">
-            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-500 material-symbols-outlined text-[20px]">
+            <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-500 material-symbols-outlined text-[18px]">
               search
             </span>
             <input
@@ -100,136 +364,14 @@ const NerdyStore = () => {
               placeholder="Search software..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full bg-[#F5F5F5] border border-transparent focus:border-blue-500 focus:bg-white rounded-full py-2 pl-10 pr-4 text-sm outline-none transition-all placeholder-slate-400"
+              className="w-full bg-[#F3F2F1] border border-transparent focus:border-blue-500/30 focus:bg-white focus:shadow-sm rounded-full py-2 pl-10 pr-4 text-xs font-semibold outline-none transition-all placeholder-slate-400 text-slate-700"
             />
           </div>
         </div>
 
-        {/* Scrollable Grid */}
-        <div className="flex-1 overflow-y-auto p-6 scrollbar-thin scrollbar-thumb-slate-200">
-          {/* Featured Banner (Only on All + No Search) */}
-          {activeCategory === "all" && searchQuery === "" && (
-            <div
-              className="mb-8 rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 p-8 text-white shadow-lg relative overflow-hidden group hover:shadow-xl transition-all cursor-pointer"
-              onClick={() => setActiveCategory("development")}
-            >
-              <div className="relative z-10 max-w-lg">
-                <h2 className="text-3xl font-bold mb-2">Build the Future</h2>
-                <p className="text-blue-100 text-lg mb-6">
-                  Discover powerful development tools like Nerdy Studio,
-                  Terminal, and more to kickstart your coding journey.
-                </p>
-                <button className="bg-white text-blue-600 px-6 py-2 rounded-full font-bold text-sm hover:bg-blue-50 transition-colors">
-                  Browse Developer Tools
-                </button>
-              </div>
-              <span className="material-symbols-outlined absolute -bottom-10 -right-10 text-[200px] text-white/10 group-hover:scale-110 transition-transform duration-500">
-                code
-              </span>
-            </div>
-          )}
-
-          {/* Apps Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-            <AnimatePresence mode="popLayout">
-              {filteredApps.map((appData) => {
-                const registryItem = APP_REGISTRY[appData.id];
-                // If app not in registry but in data, fallback (shouldn't happen with our plan)
-                const icon = registryItem?.icon || "apps";
-                const color = registryItem?.color || "bg-slate-500";
-                const isInstalled = installedApps.includes(appData.id);
-
-                return (
-                  <motion.div
-                    layout
-                    key={appData.id}
-                    initial={{ opacity: 0, scale: 0.9 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    exit={{ opacity: 0, scale: 0.9 }}
-                    transition={{ duration: 0.2 }}
-                    className="bg-white border border-[#E5E5E5] rounded-xl p-4 flex gap-4 hover:border-blue-300 hover:shadow-md transition-all group"
-                  >
-                    {/* Icon */}
-                    <div
-                      className={`w-16 h-16 rounded-xl shrink-0 flex items-center justify-center text-white shadow-sm ${color}`}
-                    >
-                      <span className="material-symbols-outlined text-[32px]">
-                        {icon}
-                      </span>
-                    </div>
-
-                    {/* Info */}
-                    <div className="flex flex-col flex-1 min-w-0">
-                      <div className="flex justify-between items-start">
-                        <h3
-                          className="font-bold text-slate-800 truncate pr-2"
-                          title={appData.name}
-                        >
-                          {appData.name}
-                        </h3>
-                        <div className="flex items-center text-xs text-slate-400 bg-slate-50 px-1.5 py-0.5 rounded">
-                          <span className="material-symbols-outlined text-[12px] mr-0.5 text-yellow-500">
-                            star
-                          </span>
-                          {appData.rating}
-                        </div>
-                      </div>
-                      <p className="text-xs text-slate-500 line-clamp-2 mt-0.5 mb-3 leading-relaxed">
-                        {appData.description}
-                      </p>
-
-                      <div className="mt-auto flex items-center justify-between">
-                        <span className="text-[10px] text-slate-400 font-medium">
-                          {appData.size}
-                        </span>
-
-                        {/* Action Button */}
-                        <div className="flex gap-2">
-                          {isInstalled ? (
-                            <>
-                              <button
-                                onClick={() => uninstallApp(appData.id)}
-                                className="px-3 py-1.5 rounded-lg text-xs font-semibold text-red-500 bg-red-50 hover:bg-red-100 transition-colors"
-                              >
-                                Uninstall
-                              </button>
-                              <button
-                                onClick={() => handleOpenApp(appData.id)}
-                                className="px-4 py-1.5 rounded-lg text-xs font-semibold text-white bg-blue-500 hover:bg-blue-600 transition-colors shadow-sm"
-                              >
-                                Open
-                              </button>
-                            </>
-                          ) : (
-                            <button
-                              onClick={() => installApp(appData.id)}
-                              className="px-4 py-1.5 rounded-lg text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 transition-colors shadow-blue-500/20 shadow-md"
-                            >
-                              Install
-                            </button>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  </motion.div>
-                );
-              })}
-            </AnimatePresence>
-          </div>
-
-          {filteredApps.length === 0 && (
-            <div className="flex flex-col items-center justify-center py-20 text-slate-400">
-              <span className="material-symbols-outlined text-6xl mb-4">
-                search_off
-              </span>
-              <p className="text-lg font-medium">
-                No results found for "{searchQuery}"
-              </p>
-              <p className="text-sm">
-                Try checking your spelling or using different keywords.
-              </p>
-            </div>
-          )}
+        {/* Scrollable Viewport */}
+        <div className="flex-1 overflow-y-auto p-8 scrollbar-thin scrollbar-thumb-slate-200">
+          {renderContent()}
         </div>
       </div>
     </div>

@@ -11,9 +11,7 @@ const TimePage = () => {
 
   return (
     <div className="animate-in fade-in slide-in-from-bottom-2 duration-300">
-      <h1 className="text-2xl font-semibold text-white mb-6">
-        Time & language
-      </h1>
+      <h1 className="text-2xl font-semibold text-white mb-6">Date & Time</h1>
 
       <div className="mb-6 p-4 rounded-lg bg-[#2B2B2B] border border-[#353535]">
         <div className="text-4xl font-light mb-1">
@@ -46,7 +44,7 @@ const TimePage = () => {
       <SettingsCard
         icon="🗣️"
         title="Language & region"
-        subtitle="Windows display language, preferred languages, regional format"
+        subtitle="NerdyOS display language, preferred languages, regional format"
         showArrow
       />
     </div>

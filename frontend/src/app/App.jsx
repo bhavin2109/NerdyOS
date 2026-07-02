@@ -4,7 +4,7 @@
  */
 
 import { useEffect, useState, memo } from "react";
-import { AnimatePresence } from "framer-motion";
+import { MotionConfig } from "framer-motion";
 
 // Stores
 import useSystemStore from "../store/systemStore";
@@ -67,16 +67,15 @@ const App = memo(function App() {
   }
 
   return (
-    <div className={`w-screen h-screen overflow-hidden font-sans ${theme}`}>
-      {/* macOS-style Desktop */}
-      <Desktop />
-
-      {/* Brightness Overlay */}
-      <div
-        className="fixed inset-0 z-[99999] pointer-events-none bg-black transition-opacity duration-100"
-        style={{ opacity: (100 - brightness) / 100 }}
-      />
-    </div>
+    <MotionConfig reducedMotion="user" transition={{ duration: 0.25, ease: [0.32, 0.72, 0, 1] }}>
+      <div className={`w-screen h-screen overflow-hidden font-sans ${theme}`}>
+        <Desktop />
+        <div
+          className="fixed inset-0 z-[99999] pointer-events-none bg-black transition-opacity duration-100"
+          style={{ opacity: (100 - brightness) / 100 }}
+        />
+      </div>
+    </MotionConfig>
   );
 });
 

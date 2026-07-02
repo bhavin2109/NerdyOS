@@ -122,7 +122,7 @@ export const TWEEN_CONFIGS = {
 
     windowClose: {
         type: 'tween',
-        duration: DURATIONS.fast / 1000,
+        duration: DURATIONS.normal / 1000,
         ease: BEZIER_CURVES.windowClose,
     },
 

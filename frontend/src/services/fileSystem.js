@@ -106,6 +106,20 @@ class FileSystem {
         return item.content;
     }
 
+    // Rename file or directory
+    async rename(oldPath, newPath) {
+        const db = await this.dbPromise;
+        const item = await this.stat(oldPath);
+        if (!item) throw new Error(`rename: ${oldPath}: No such file or directory`);
+        if (await this.stat(newPath)) throw new Error(`rename: ${newPath}: File exists`);
+
+        const name = newPath.split("/").pop();
+        const parent = newPath.substring(0, newPath.lastIndexOf("/")) || "/";
+
+        await db.delete(STORE_NAME, oldPath);
+        await db.put(STORE_NAME, { ...item, path: newPath, name, parent, updatedAt: new Date() });
+    }
+
     // Remove file or directory
     async rm(path) {
         const db = await this.dbPromise;

@@ -14,7 +14,7 @@ const Spotlight = ({ isOpen, onClose }) => {
   const allApps = useMemo(() => Object.values(APP_REGISTRY), []);
 
   const filteredApps = useMemo(() => {
-    if (!searchTerm) return [];
+    if (!searchTerm.trim()) return allApps.slice(0, 8);
     return allApps.filter((app) =>
       app.name.toLowerCase().includes(searchTerm.toLowerCase())
     );
@@ -48,11 +48,9 @@ const Spotlight = ({ isOpen, onClose }) => {
     if (isOpenWindow && isActive && !isOpenWindow.isMinimized) {
       // If already active, maybe just do nothing or close spotlight
     } else if (isOpenWindow) {
-      // If open but not focused or minimized, focus/restore it
-      // We use openWindow which handles restore/focus
-      openWindow(app.id, app.name, app.component);
+      openWindow(app.id, {}, null);
     } else {
-      openWindow(app.id, app.name, app.component);
+      openWindow(app.id, {}, null);
     }
 
     onClose();
@@ -98,7 +96,7 @@ const Spotlight = ({ isOpen, onClose }) => {
         >
           {/* Main Container */}
           <motion.div
-            className="w-[600px] bg-white/60 backdrop-blur-2xl border border-white/20 rounded-xl shadow-2xl overflow-hidden flex flex-col"
+            className="w-[min(600px,92vw)] bg-white/70 backdrop-blur-xl border border-white/20 rounded-xl shadow-2xl overflow-hidden flex flex-col"
             initial={{ opacity: 0, scale: 0.95, y: -20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: -20 }}
@@ -131,79 +129,39 @@ const Spotlight = ({ isOpen, onClose }) => {
             </div>
 
             {/* Results Area */}
-            {searchTerm && (
-              <div className="p-2 bg-white/40 max-h-[350px] overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300">
-                {filteredApps.length > 0 ? (
-                  <>
-                    <div className="px-3 py-1 text-xs font-semibold text-gray-500 uppercase mt-1 mb-1">
-                      Top Hit
-                    </div>
-                    {filteredApps.map((app, index) => (
-                      <div
-                        key={app.id}
-                        onClick={() => handleLaunchApp(app)}
-                        onMouseEnter={() => setSelectedIndex(index)}
-                        className={clsx(
-                          "flex items-center px-3 py-2 rounded-lg cursor-default transition-colors",
-                          index === selectedIndex
-                            ? "bg-blue-500 text-white shadow-sm"
-                            : "text-gray-800 hover:bg-gray-200/50"
-                        )}
-                      >
-                        {/* App Icon / Color Block */}
-                        <div
-                          className={clsx(
-                            "w-7 h-7 rounded-md mr-3 flex items-center justify-center text-xs font-bold text-white shadow-sm",
-                            app.color || "bg-gray-400"
-                          )}
-                        >
-                          {app.icon === "file"
-                            ? "📁"
-                            : app.icon === "settings"
-                            ? "⚙️"
-                            : app.icon === "compass"
-                            ? "🧭"
-                            : app.name[0]}
-                        </div>
-
-                        <div className="flex flex-col">
-                          <span
-                            className={clsx(
-                              "font-medium text-sm",
-                              index === selectedIndex
-                                ? "text-white"
-                                : "text-gray-900"
-                            )}
-                          >
-                            {app.name}
-                          </span>
-                          <span
-                            className={clsx(
-                              "text-xs",
-                              index === selectedIndex
-                                ? "text-blue-100"
-                                : "text-gray-500"
-                            )}
-                          >
-                            Application
-                          </span>
-                        </div>
-
-                        {index === selectedIndex && (
-                          <span className="ml-auto text-xs text-blue-100 opacity-80 font-medium">
-                            Open
-                          </span>
-                        )}
-                      </div>
-                    ))}
-                  </>
-                ) : (
-                  <div className="text-center py-8 text-gray-500">
-                    No results found for "{searchTerm}"
-                  </div>
+            {filteredApps.length > 0 ? (
+              <div className="p-2 bg-white/40 max-h-[350px] overflow-y-auto">
+                {!searchTerm && (
+                  <div className="px-3 py-1 text-xs font-semibold text-gray-500 uppercase">Suggested</div>
                 )}
+                {filteredApps.map((app, index) => (
+                  <div
+                    key={app.id}
+                    onClick={() => handleLaunchApp(app)}
+                    onMouseEnter={() => setSelectedIndex(index)}
+                    className={clsx(
+                      "flex items-center px-3 py-2 rounded-lg cursor-default transition-colors",
+                      index === selectedIndex
+                        ? "bg-blue-500 text-white shadow-sm"
+                        : "text-gray-800 hover:bg-gray-200/50"
+                    )}
+                  >
+                    <div className={clsx("w-7 h-7 rounded-md mr-3 flex items-center justify-center text-xs font-bold text-white shadow-sm", app.color || "bg-gray-400")}>
+                      {app.name[0]}
+                    </div>
+                    <div className="flex flex-col">
+                      <span className={clsx("font-medium text-sm", index === selectedIndex ? "text-white" : "text-gray-900")}>{app.name}</span>
+                      <span className={clsx("text-xs", index === selectedIndex ? "text-blue-100" : "text-gray-500")}>Application</span>
+                    </div>
+                    {index === selectedIndex && (
+                      <span className="ml-auto text-xs text-blue-100 opacity-80 font-medium">Open</span>
+                    )}
+                  </div>
+                ))}
               </div>
-            )}
+            ) : searchTerm ? (
+              <div className="text-center py-8 text-gray-500">No results found for "{searchTerm}"</div>
+            ) : null}
 
             {!searchTerm && (
               <div className="px-4 py-2 text-xs text-gray-500 text-center border-t border-gray-400/10 bg-white/30">

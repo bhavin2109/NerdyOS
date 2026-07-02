@@ -61,7 +61,7 @@ export const Toggle = ({ checked, onChange }) => (
     className={clsx(
       "w-10 h-5 rounded-full relative transition-colors duration-200 border-2",
       checked
-        ? "bg-cyan-500 border-cyan-500"
+        ? "bg-[#0A84FF] border-[#0A84FF]"
         : "bg-transparent border-[#808080] hover:border-white"
     )}
   >
